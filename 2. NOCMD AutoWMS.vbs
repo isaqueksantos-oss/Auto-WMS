@@ -1,0 +1,1 @@
+CreateObject("WScript.Shell").Run """1. AutoWMS.bat""", 0, True

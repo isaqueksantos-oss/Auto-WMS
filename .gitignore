@@ -1,0 +1,54 @@
+# Ambiente Python embutido
+Lib/
+DLLs/
+Scripts/
+include/
+libs/
+tcl/
+Doc/
+python.exe
+pythonw.exe
+python*.dll
+vcruntime*.dll
+*.pyd
+*.cat
+LICENSE.txt
+NEWS.txt
+
+# Cache e ambientes virtuais
+__pycache__/
+*.py[cod]
+.venv/
+
+# Credenciais e configurações locais
+config.json
+*.jnlp
+
+# Modelos de OCR (arquivos grandes)
+**/.EasyOCR/
+*.pth
+**/user_network/
+
+# Logs e saídas de depuração
+active/logs/
+debug_ocr/
+hash_samples/
+initialW/
+*.log
+
+# Backups gerados pelos scripts
+*.bak
+*.bak2
+
+# Sistema
+Thumbs.db
+
+# Pastas extras do Python embutido
+share/
+Tools/
+
+# Capturas de tela avulsas
+antes_login.png
+
+# Licença do Python embutido
+LICENSE.txt
