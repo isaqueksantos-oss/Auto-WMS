@@ -52,3 +52,9 @@ antes_login.png
 
 # Licença do Python embutido
 LICENSE.txt
+
+# Coordenadas calibradas por máquina e cópias de conflito do OneDrive
+**/coords_config*
+*-AMER3-*
+
+git config core.autocrlf true
