@@ -20,6 +20,7 @@ from interface.utils.config_manager import carregar_config
 from interface.utils.scheduler_manager import GerenciadorAgendamentos, Agendamento
 from enum import Enum
 from interface.utils.ui_theme import ThemeManager, ajustar_janela, ativar_dpi_awareness, largura_campo
+from interface.utils.execution_tracker import ExecutionTracker
 
 pyautogui.FAILSAFE = False
 
@@ -2291,6 +2292,7 @@ class MainWindow:
                     self.root.after(0, self._substituir_linhas_excel_input, excel_input, remessas_atualizadas)
 
             def _worker():
+                tracker = None
                 try:
                     # Agendar JOBs não usa dados Excel
                     if self._nome_automacao_chave(nome) == "agendar jobs":
@@ -2301,7 +2303,7 @@ class MainWindow:
                         senha_sap = self.senha_sap_var.get().strip()
                         conexao_sap = self.conexao_sap_var.get().strip()
                         result = modulo.iniciar_automacao(nome_job, usuario_job, caminho_salvar_job, usuario_sap, senha_sap, conexao_sap, log)
-                    
+
                     else:
                         if nome.lower() == "relex":
                             result = modulo.iniciar_automacao(
@@ -2316,6 +2318,26 @@ class MainWindow:
                                 raise RuntimeError("Excel input não encontrado para automação de dados.")
                             dados = excel_input.get_data()
                             log(f"Dados do Excel lidos: {len(dados)} linhas")
+
+                            # Rastreador: registra o item em que parou e tira prints.
+                            # So para automacoes que informam o status de cada linha.
+                            automacoes_rastreadas = (
+                                "eliminar remessa",
+                                "mapeamento",
+                                "remover mapeamento",
+                                "alterar prioridade",
+                                "alterar restricao",
+                                "cativar local",
+                                "descativar local",
+                                "alterar ponto minimo",
+                            )
+
+                            if nome.lower() in automacoes_rastreadas:
+                                tracker = ExecutionTracker(nome, len(dados), log_fn=log)
+                                status_cb = tracker.envolver(_status_cb)
+                            else:
+                                status_cb = _status_cb
+
                             if nome == "Eliminar remessa":
                                 # Eliminar remessa passa todos os parâmetros preenchidos
                                 result = modulo.iniciar_automacao(
@@ -2328,26 +2350,36 @@ class MainWindow:
                                     remessas=remessas_poupar_processadas,
                                     captura_callback=_captura_cb,
                                     restricoes_callback=_restricoes_cb,
-                                    status_callback_fn=_status_cb,
+                                    status_callback_fn=status_cb,
                                 )
                                 self._atualizar_remessa(result)
                             elif nome == "Processar Remessa":
                                 result = modulo.iniciar_automacao(dados, planta)
                                 self._atualizar_remessa(result)
-                            elif nome.lower() == "mapeamento":
-                                result = modulo.iniciar_automacao(dados, status_callback_fn=_status_cb)
-                            elif nome.lower() == "remover mapeamento":
-                                result = modulo.iniciar_automacao(dados, status_callback_fn=_status_cb)
-                            elif nome.lower() == "alterar prioridade":
-                                result = modulo.iniciar_automacao(dados, status_callback_fn=_status_cb)
-                            elif nome.lower() == "alterar restricao":
-                                result = modulo.iniciar_automacao(dados, status_callback_fn=_status_cb)
-                            elif nome.lower() in ("cativar local", "descativar local", "alterar ponto minimo"):
-                                result = modulo.iniciar_automacao(dados, status_callback_fn=_status_cb)
+                            elif nome.lower() in (
+                                "mapeamento",
+                                "remover mapeamento",
+                                "alterar prioridade",
+                                "alterar restricao",
+                                "cativar local",
+                                "descativar local",
+                                "alterar ponto minimo",
+                            ):
+                                result = modulo.iniciar_automacao(dados, status_callback_fn=status_cb)
                             else:
                                 result = modulo.iniciar_automacao(dados)
 
+                            # Execução terminou sem exceção: print final e resumo
+                            if tracker:
+                                tracker.finalizar()
+
                 except Exception as exc:
+                    # Registra onde parou e tira o print antes de seguir
+                    if tracker:
+                        try:
+                            tracker.finalizar(erro=exc)
+                        except Exception:
+                            pass
                     self.root.after(0, lambda e=exc: log(f"Erro na automação: {e}"))
                     result = False
 
