@@ -58,3 +58,30 @@ LICENSE.txt
 *-AMER3-*
 
 git config core.autocrlf true
+
+# Configurações locais
+**/config_global.json
+**/config_*.json
+**/coords_config*.json
+
+# OCR local
+**/.EasyOCR/
+*.pth
+
+# Logs
+*.log
+active/logs/
+
+# Python embutido
+Lib/
+DLLs/
+Scripts/
+include/
+libs/
+tcl/
+Doc/
+share/
+Tools/
+python.exe
+pythonw.exe
+python*.dll
