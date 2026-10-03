@@ -155,28 +155,36 @@ class MainWindow:
         # Aplica o tema depois que todos os widgets ja existem
         self.theme.aplicar()
 
-        def _criar_frame_login(self) -> None: frame = tk.LabelFrame(self.root, text="Configuração de Login e Aplicação", padx=10, pady=5)
-        frame.pack(fill="x", padx=10, pady=5)
+    def _criar_frame_login(self, root: tk.Tk) -> None:
+        # Cria o frame de login com campos de usuário, senha, WMS e SAP
+        frame = ttk.LabelFrame(root, text="Configuração de Login e Aplicação", padding=(10, 5))
+        frame.pack(fill="x", padx=10, pady=10, side="top")
 
-        # O botao e empacotado ANTES dos campos para garantir seu espaco
-        self._btn_tema = tk.Button(frame, text=self.theme.rotulo_botao(), width=9, command=self._alternar_tema)
+        # Campos WMS
+        tk.Label(frame, text="WMS:", font=("Arial", 9, "bold")).pack(side="left", padx=(0, 5))
+        self.usuario_var = self._criar_campo_entrada(frame, "Usuário:", width=20)
+        self.senha_var = self._criar_campo_entrada(frame, "Senha:", width=20, is_password=True)
+        tk.Button(frame, text="Login WMS", command=self._on_login_wms).pack(side="left", padx=(0, 10))
+        self.wms_var = self._criar_campo_entrada(frame, "Caminho (.jnlp):", width=35)
+        
+        # Separador visual
+        ttk.Separator(frame, orient="vertical").pack(side="left", fill="y", padx=10)
+        
+        # Campos SAP
+        tk.Label(frame, text="SAP:", font=("Arial", 9, "bold")).pack(side="left", padx=(0, 5))
+        self.usuario_sap_var = self._criar_campo_entrada(frame, "Usuário:", width=20)
+        self.senha_sap_var = self._criar_campo_entrada(frame, "Senha:", width=20, is_password=True)
+        self.conexao_sap_var = self._criar_campo_entrada(frame, "Conexão:", width=20)
+
+        # Alternancia entre tema claro e escuro
+        self._btn_tema = tk.Button(
+            frame,
+            text=self.theme.rotulo_botao(),
+            width=10,
+            command=self._alternar_tema,
+        )
         self._btn_tema.pack(side="right", padx=5)
 
-        # Larguras proporcionais a resolucao do monitor
-        lg = lambda base: largura_campo(self.root, base)
-
-        tk.Label(frame, text="WMS:", font=("Arial", 9, "bold")).pack(side="left", padx=(0, 5))
-        self.usuario_var = self._criar_campo_entrada(frame, "Usuário:", width=lg(20))
-        self.senha_var = self._criar_campo_entrada(frame, "Senha:", width=lg(20), show="*")
-
-        tk.Button(frame, text="Login WMS", command=self._executar_login_wms).pack(side="left", padx=5)
-
-        self.caminho_wms_var = self._criar_campo_entrada(frame, "Caminho (.jnlp):", width=lg(40))
-
-        tk.Label(frame, text="SAP:", font=("Arial", 9, "bold")).pack(side="left", padx=(15, 5))
-        self.usuario_sap_var = self._criar_campo_entrada(frame, "Usuário:", width=lg(20))
-        self.senha_sap_var = self._criar_campo_entrada(frame, "Senha:", width=lg(20), show="*")
-        self.conexao_sap_var = self._criar_campo_entrada(frame, "Conexão:", width=lg(20))
 
     def _criar_frame_agendamentos(self, root: tk.Tk) -> None:
         # Cria o frame de visualização de agendamentos
