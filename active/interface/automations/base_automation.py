@@ -13,7 +13,7 @@ pyautogui.PAUSE = 0
 registry = ElementRegistry()
 
 CONFIANCA_PADRAO = 0.7
-EXIBIR_VISUALMENTE = True
+EXIBIR_VISUALMENTE = False
 
 def focus_manager(palavras_chave=None):
     """
