@@ -169,17 +169,16 @@ class MainWindow:
 
     def _criar_frame_login(self, root: tk.Tk) -> None:
         # Cria o frame de login com campos de usuário, senha, WMS e SAP
-        frame = ttk.LabelFrame(root, text="Configuração de Login e Aplicação", padding=(1, 5))
-        frame.pack(fill="x", padx=10, pady=1, side="top")
+        frame = ttk.LabelFrame(root, text="Configuração de Login e Aplicação", padding=(1, 1))
+        frame.pack(fill="x", padx=1, pady=1, side="top")
 
         # Campos WMS
         frame_wms = ttk.Frame(frame, padding=(5, 5))
         frame_wms.pack(fill="x", padx=10, pady=10, side="top")
-        tk.Button(frame_wms, text="Login WMS", command=self._on_login_wms).pack(side="left", padx=(0, 10))
-        self.wms_var = self._criar_campo_entrada(frame_wms, "Caminho (.jnlp):", width=55)
-        tk.Label(frame_wms, text="WMS:", font=("Arial", 9, "bold")).pack(side="left", padx=(0, 2))
+        tk.Button(frame_wms, text="Login WMS", command=self._on_login_wms, width=16).pack(side="left", padx=(10, 10))
         self.usuario_var = self._criar_campo_entrada(frame_wms, "Usuário:", width=20)
         self.senha_var = self._criar_campo_entrada(frame_wms, "Senha:", width=20, is_password=True)
+        self.wms_var = self._criar_campo_entrada(frame_wms, "Caminho (.jnlp):", width=55)
         
         # Separador visual
         ttk.Separator(frame, orient="horizontal").pack(side="top", fill="x", padx=10)
@@ -187,8 +186,7 @@ class MainWindow:
         # Campos SAP
         frame_sap = ttk.Frame(frame, padding=(1, 1))
         frame_sap.pack(fill="x", padx=10, pady=10, side="top")
-        tk.Button(frame_sap, text="Login SAP", command=self._on_login_sap).pack(side="left", padx=(0, 10))
-        tk.Label(frame_sap, text="SAP:", font=("Arial", 9, "bold")).pack(side="left", padx=(0, 5))
+        tk.Button(frame_sap, text="Login SAP", command=self._on_login_sap, width=16).pack(side="left", padx=(10, 10))
         self.usuario_sap_var = self._criar_campo_entrada(frame_sap, "Usuário:", width=20)
         self.senha_sap_var = self._criar_campo_entrada(frame_sap, "Senha:", width=20, is_password=True)
         self.conexao_sap_var = self._criar_campo_entrada(frame_sap, "Conexão:", width=20)
@@ -3170,7 +3168,7 @@ class MainWindow:
         print("[INFO] Confirmando ADVERTÊNCIA DE SEGURANÇA...")
         time.sleep(0.5)
 
-        opcoes_textos = {"advert": ["risco", "aceito", "eu aceito"]}
+        opcoes_textos = {"advert": ["risco", "aceito", "eu aceito","nao mostrar novamente"]}
 
         resultado = aguardar_textos(
             "WMMS",
