@@ -1,5 +1,5 @@
 import sys
-
+sys.dont_write_bytecode = True
 from interface import main_window
 from interface.wms_launcher import executar_wms_com_config_salva
 
