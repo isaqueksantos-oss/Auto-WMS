@@ -169,28 +169,33 @@ class MainWindow:
 
     def _criar_frame_login(self, root: tk.Tk) -> None:
         # Cria o frame de login com campos de usuário, senha, WMS e SAP
-        frame = ttk.LabelFrame(root, text="Configuração de Login e Aplicação", padding=(10, 5))
-        frame.pack(fill="x", padx=10, pady=10, side="top")
+        frame = ttk.LabelFrame(root, text="Configuração de Login e Aplicação", padding=(1, 5))
+        frame.pack(fill="x", padx=10, pady=1, side="top")
 
         # Campos WMS
-        tk.Label(frame, text="WMS:", font=("Arial", 9, "bold")).pack(side="left", padx=(0, 5))
-        self.usuario_var = self._criar_campo_entrada(frame, "Usuário:", width=20)
-        self.senha_var = self._criar_campo_entrada(frame, "Senha:", width=20, is_password=True)
-        tk.Button(frame, text="Login WMS", command=self._on_login_wms).pack(side="left", padx=(0, 10))
-        self.wms_var = self._criar_campo_entrada(frame, "Caminho (.jnlp):", width=35)
+        frame_wms = ttk.Frame(frame, padding=(5, 5))
+        frame_wms.pack(fill="x", padx=10, pady=10, side="top")
+        tk.Button(frame_wms, text="Login WMS", command=self._on_login_wms).pack(side="left", padx=(0, 10))
+        self.wms_var = self._criar_campo_entrada(frame_wms, "Caminho (.jnlp):", width=55)
+        tk.Label(frame_wms, text="WMS:", font=("Arial", 9, "bold")).pack(side="left", padx=(0, 2))
+        self.usuario_var = self._criar_campo_entrada(frame_wms, "Usuário:", width=20)
+        self.senha_var = self._criar_campo_entrada(frame_wms, "Senha:", width=20, is_password=True)
         
         # Separador visual
-        ttk.Separator(frame, orient="vertical").pack(side="left", fill="y", padx=10)
-        
+        ttk.Separator(frame, orient="horizontal").pack(side="top", fill="x", padx=10)
+
         # Campos SAP
-        tk.Label(frame, text="SAP:", font=("Arial", 9, "bold")).pack(side="left", padx=(0, 5))
-        self.usuario_sap_var = self._criar_campo_entrada(frame, "Usuário:", width=20)
-        self.senha_sap_var = self._criar_campo_entrada(frame, "Senha:", width=20, is_password=True)
-        self.conexao_sap_var = self._criar_campo_entrada(frame, "Conexão:", width=20)
+        frame_sap = ttk.Frame(frame, padding=(1, 1))
+        frame_sap.pack(fill="x", padx=10, pady=10, side="top")
+        tk.Button(frame_sap, text="Login SAP", command=self._on_login_sap).pack(side="left", padx=(0, 10))
+        tk.Label(frame_sap, text="SAP:", font=("Arial", 9, "bold")).pack(side="left", padx=(0, 5))
+        self.usuario_sap_var = self._criar_campo_entrada(frame_sap, "Usuário:", width=20)
+        self.senha_sap_var = self._criar_campo_entrada(frame_sap, "Senha:", width=20, is_password=True)
+        self.conexao_sap_var = self._criar_campo_entrada(frame_sap, "Conexão:", width=20)
 
         # Alternancia entre tema claro e escuro
         self._btn_tema = tk.Button(
-            frame,
+            frame_wms,
             text=self.theme.rotulo_botao(),
             width=10,
             command=self._alternar_tema,
@@ -439,8 +444,8 @@ class MainWindow:
                 self.senha_var.set(senha)
             if wms:
                 self.wms_var.set(wms)
-            if link_relex:
-                self.link_relex_var.set(link_relex)
+            #if link_relex:
+                #self.link_relex_var.set(link_relex)
             if caminho_salvar_relex:
                 self.caminho_salvar_relex_var.set(caminho_salvar_relex)
 
@@ -455,12 +460,12 @@ class MainWindow:
                     self.senha_sap_var.set(senha_sap)
                 if conexao_sap:
                     self.conexao_sap_var.set(conexao_sap)
-                usuario_relex = keyring.get_password(APP_NAME, "usuario_relex")
-                senha_relex = keyring.get_password(APP_NAME, "senha_relex")
-                if usuario_relex:
-                    self.usuario_relex_var.set(usuario_relex)
-                if senha_relex:
-                    self.senha_relex_var.set(senha_relex)
+                #usuario_relex = keyring.get_password(APP_NAME, "usuario_relex")
+                #senha_relex = keyring.get_password(APP_NAME, "senha_relex")
+                #if usuario_relex:
+                #    self.usuario_relex_var.set(usuario_relex)
+                #if senha_relex:
+                #    self.senha_relex_var.set(senha_relex)
             except Exception:
                 pass  # Se keyring falhar, apenas continua sem SAP
 
@@ -1710,17 +1715,17 @@ class MainWindow:
                 data["caminho_wms"] = data["caminho_wms"][:-1]
             data = {
                 "caminho_wms": self.wms_var.get().strip(),
-                "link_relex": self.link_relex_var.get().strip(),
-                "caminho_salvar_relex": self.caminho_salvar_relex_var.get().strip(),
+                #"link_relex": self.link_relex_var.get().strip(),
+                #"caminho_salvar_relex": self.caminho_salvar_relex_var.get().strip(),
             }
             if data["caminho_wms"].startswith('"'):
                 data["caminho_wms"] = data["caminho_wms"][1:]
             if data["caminho_wms"].endswith('"'):
                 data["caminho_wms"] = data["caminho_wms"][:-1]
-            if data["link_relex"].startswith('"'):
-                data["link_relex"] = data["link_relex"][1:]
-            if data["link_relex"].endswith('"'):
-                data["link_relex"] = data["link_relex"][:-1]
+            #if data["link_relex"].startswith('"'):
+            #    data["link_relex"] = data["link_relex"][1:]
+            #if data["link_relex"].endswith('"'):
+            #    data["link_relex"] = data["link_relex"][:-1]
 
             with open(CONFIG_PATH, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
@@ -1735,8 +1740,8 @@ class MainWindow:
             keyring.set_password(APP_NAME, "conexao_sap", self.conexao_sap_var.get().strip())
             
             # Salvar credenciais RELEX
-            keyring.set_password(APP_NAME, "usuario_relex", self.usuario_relex_var.get().strip())
-            keyring.set_password(APP_NAME, "senha_relex", self.senha_relex_var.get().strip())
+            #keyring.set_password(APP_NAME, "usuario_relex", self.usuario_relex_var.get().strip())
+            #keyring.set_password(APP_NAME, "senha_relex", self.senha_relex_var.get().strip())
             
             return True
         except FileNotFoundError as e:
@@ -1772,6 +1777,92 @@ class MainWindow:
                 self.log_app("[OK] Login WMS concluido.")
             else:
                 self.log_app("[ERRO] Nao foi possivel concluir o login WMS.", "ERRO")
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _aguardar_janela_sap(
+        self,
+        titulo_esperado: str,
+        timeout: float,
+        titulos_ignorados: Tuple[str, ...] = (),
+    ) -> Optional[Any]:
+        prazo = time.monotonic() + timeout
+        while time.monotonic() < prazo:
+            for titulo in gw.getAllTitles():
+                titulo_normalizado = titulo.casefold()
+                if titulo_esperado.casefold() not in titulo_normalizado:
+                    continue
+                if any(ignorado.casefold() in titulo_normalizado for ignorado in titulos_ignorados):
+                    continue
+
+                janelas = gw.getWindowsWithTitle(titulo)
+                if janelas:
+                    janela = janelas[0]
+                    janela.activate()
+                    time.sleep(0.2)
+                    janela.maximize()
+                    time.sleep(0.3)
+                    return janela
+            time.sleep(0.2)
+        return None
+
+    def _on_login_sap(self) -> None:
+        usuario = self.usuario_sap_var.get().strip()
+        senha = self.senha_sap_var.get().strip()
+        conexao = self.conexao_sap_var.get().strip()
+        if not all([usuario, senha, conexao]):
+            self.log_app("Usuario, senha ou conexao SAP ausentes. Preencha antes de fazer login.", "ERRO")
+            return
+
+        if not self._salvar_config_global():
+            self.log_app("Falha ao salvar configuracoes antes do login SAP.", "ERRO")
+            return
+
+        self.log_app("[INFO] Iniciando fluxo de login do SAP...")
+
+        def _worker() -> None:
+            try:
+                if not agendar_jobs.sap_esta_rodando():
+                    sapgui_path = agendar_jobs.encontrar_sapgui()
+                    if not sapgui_path:
+                        self.log_app("[ERRO] Nao foi possivel localizar o SAP GUI.")
+                        return
+                    self.log_app(f"[INFO] Iniciando SAP GUI em: {sapgui_path}")
+                    if not agendar_jobs.iniciar_sap(str(sapgui_path)):
+                        self.log_app("[ERRO] Nao foi possivel iniciar o SAP GUI.", "ERRO")
+                        return
+
+                janela_logon = self._aguardar_janela_sap("logon", timeout=30)
+                if janela_logon is None:
+                    self.log_app("[ERRO] Janela de conexao do SAP nao encontrada.", "ERRO")
+                    return
+
+                pyperclip.copy(conexao)
+                pyautogui.hotkey("ctrl", "v")
+                time.sleep(0.3)
+                pyautogui.press("enter")
+
+                janela_login = self._aguardar_janela_sap(
+                    "sap",
+                    timeout=60,
+                    titulos_ignorados=("logon",),
+                )
+                if janela_login is None:
+                    self.log_app("[ERRO] Janela de login do SAP nao encontrada.", "ERRO")
+                    return
+
+                pyperclip.copy(usuario)
+                pyautogui.hotkey("ctrl", "v")
+                time.sleep(0.3)
+                pyautogui.press("tab")
+                time.sleep(0.2)
+                pyperclip.copy(senha)
+                pyautogui.hotkey("ctrl", "v")
+                time.sleep(0.3)
+                pyautogui.press("enter")
+                self.log_app("[OK] Credenciais enviadas ao SAP.")
+            except Exception as e:
+                self.log_app(f"[ERRO] Falha ao iniciar ou autenticar no SAP: {e}", "ERRO")
 
         threading.Thread(target=_worker, daemon=True).start()
 
