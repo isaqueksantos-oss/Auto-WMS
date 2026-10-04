@@ -52,7 +52,8 @@ ES_SYSTEM_REQUIRED = 0x00000001
 ES_DISPLAY_REQUIRED = 0x00000002
 
 TABS_CONFIG = [
-    {"nome": "Agendar JOB's", "modulo": agendar_jobs, "tamanho_esperado": 1},
+    #{"nome": "Agendar JOB's", "modulo": agendar_jobs, "tamanho_esperado": 1},
+    #{"nome": "RELEX", "modulo": relex_download, "tamanho_esperado": 0},
     {"nome": "Eliminar remessa", "modulo": wmex0115_eliminar_remessa, "tamanho_esperado": 1},
     {"nome": "Processar remessa", "modulo": wmex1120_processar_remessa, "tamanho_esperado": 1},
     {"nome": "Mapeamento", "modulo": wmma0020_mapeamento, "tamanho_esperado": 7, "grupo": "WMMA0020"},
@@ -62,7 +63,6 @@ TABS_CONFIG = [
     {"nome": "Cativar local", "modulo": wmma0031_cativar, "tamanho_esperado": 3, "grupo": "WMMA0031"},
     {"nome": "Descativar local", "modulo": wmma0031_descativar, "tamanho_esperado": 2, "grupo": "WMMA0031"},
     {"nome": "Alterar ponto minimo", "modulo": wmma0031_alterar_ponto_minimo, "tamanho_esperado": 3, "grupo": "WMMA0031"},
-    {"nome": "RELEX", "modulo": relex_download, "tamanho_esperado": 0},
 
 ]
 
