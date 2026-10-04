@@ -5,7 +5,7 @@ import subprocess
 import ctypes
 from ctypes import wintypes
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple
 import json
 from interface.automations.base_automation import aguardar_textos, copiar_para_clipboard, focus_manager, maximize_manager
 import keyring
@@ -19,7 +19,7 @@ from .tabs.excel_input import ExcelInput
 from interface.utils.config_manager import carregar_config
 from interface.utils.scheduler_manager import GerenciadorAgendamentos, Agendamento
 from enum import Enum
-from interface.utils.ui_theme import ThemeManager, ajustar_janela, ativar_dpi_awareness, largura_campo
+from interface.utils.ui_theme import ThemeManager, ajustar_janela, ativar_dpi_awareness, escala_janela, largura_campo
 from interface.utils.execution_tracker import ExecutionTracker
 
 pyautogui.FAILSAFE = False
@@ -87,8 +87,17 @@ class MainWindow:
         ajustar_janela(
             self.root,
             proporcao=0.9,
-            minimo=(WINDOWS_CONFIG["min_width"], WINDOWS_CONFIG["min_height"]),
+            minimo=(
+                int(WINDOWS_CONFIG["min_width"] * 0.8),
+                int(WINDOWS_CONFIG["min_height"] * 0.8),
+            ),
         )
+        self._escala_interface = 1.0
+        self._espacamentos_base: Dict[tk.Misc, Tuple[str, Dict[str, Any]]] = {}
+        self._fontes_nomeadas_base: Dict[str, Tuple[tkfont.Font, int]] = {}
+        self._fontes_personalizadas: Dict[str, Tuple[tkfont.Font, int]] = {}
+        self._fontes_estilos: Dict[str, Tuple[Any, List[Tuple[Any, Any]]]] = {}
+        self._metricas_estilos: Dict[str, Dict[str, Any]] = {}
         self.theme = ThemeManager(self.root)
         self.root.option_add("*Label.Background", "#ECF4E8")
         self.root.option_add("*Label.Foreground", "#1f1f1f")
@@ -148,6 +157,7 @@ class MainWindow:
         self._pending_agendamentos_refresh = False
         self._last_root_size: Optional[Tuple[int, int]] = None
         self._mudanca_aba_por_selecao_tree = False  # Flag para rastrear mudança de aba por seleção na treeview
+        self._capturar_espacamentos_widgets(self.root)
         self.root.bind("<Configure>", self._on_root_configure)
         
         # Atualizar exibição com agendamentos carregados do JSON
@@ -155,6 +165,7 @@ class MainWindow:
 
         # Aplica o tema depois que todos os widgets ja existem
         self.theme.aplicar()
+        self._capturar_fontes_widgets(self.root)
 
     def _criar_frame_login(self, root: tk.Tk) -> None:
         # Cria o frame de login com campos de usuário, senha, WMS e SAP
@@ -190,6 +201,7 @@ class MainWindow:
     def _criar_frame_agendamentos(self, root: tk.Tk) -> None:
         # Cria o frame de visualização de agendamentos
         frame = ttk.LabelFrame(root, text="Agendamentos", padding=(10, 5))
+        self.frame_agendamentos = frame
         frame.configure(width=AGENDAMENTOS_PANEL_WIDTH)
         frame.pack(fill="y", padx=10, pady=10, side="right")
         frame.pack_propagate(False)
@@ -633,35 +645,193 @@ class MainWindow:
 
     def _on_root_configure(self, event=None) -> None:
         # Suspende atualizações pesadas enquanto a janela está sendo redimensionada
+        if event is None or event.widget is not self.root:
+            return
+
+        novo_tamanho = (event.width, event.height)
+        if self._last_root_size == novo_tamanho:
+            return
+
+        self._last_root_size = novo_tamanho
+        self._aplicar_escala_interface(event.width)
+        self._window_resize_in_progress = True
+        self._pending_agendamentos_refresh = True
+
+        if self._tree_update_job:
+            try:
+                self.root.after_cancel(self._tree_update_job)
+            except Exception:
+                pass
+            finally:
+                self._tree_update_job = None
+
+        if self._resize_release_job:
+            try:
+                self.root.after_cancel(self._resize_release_job)
+            except Exception:
+                pass
+
+        self._resize_release_job = self.root.after(180, self._finalizar_redimensionamento)
+
+    def _capturar_espacamentos_widgets(self, parent: tk.Misc) -> None:
+        metricas = ("padx", "pady", "ipadx", "ipady")
+        for widget in parent.winfo_children():
+            if widget.winfo_toplevel() is self.root:
+                gerenciador = widget.winfo_manager()
+                if gerenciador in ("pack", "grid", "place") and widget not in self._espacamentos_base:
+                    obter_info = getattr(widget, f"{gerenciador}_info")
+                    info = obter_info()
+                    espacamentos = {
+                        chave: info[chave]
+                        for chave in metricas
+                        if chave in info
+                    }
+                    self._espacamentos_base[widget] = (gerenciador, espacamentos)
+                self._capturar_espacamentos_widgets(widget)
+
+    def _escalar_espacamento(self, valor, escala: float):
+        if isinstance(valor, (tuple, list)):
+            return tuple(self._escalar_espacamento(item, escala) for item in valor)
+
+        if isinstance(valor, str):
+            partes = self.root.tk.splitlist(valor)
+            if len(partes) > 1:
+                return tuple(self._escalar_espacamento(item, escala) for item in partes)
+            if partes:
+                valor = partes[0]
+
         try:
-            if event is None or event.widget is not self.root:
-                return
+            return int(round(float(valor) * escala))
+        except (TypeError, ValueError):
+            return valor
 
-            novo_tamanho = (event.width, event.height)
-            if self._last_root_size == novo_tamanho:
-                return
+    def _obter_fonte_escalavel(self, especificacao):
+        nomes_fontes = set(tkfont.names(self.root))
+        if isinstance(especificacao, str) and especificacao in nomes_fontes:
+            return especificacao
 
-            self._last_root_size = novo_tamanho
-            self._window_resize_in_progress = True
-            self._pending_agendamentos_refresh = True
+        chave = str(especificacao)
+        if chave not in self._fontes_personalizadas:
+            fonte = tkfont.Font(root=self.root, font=especificacao)
+            self._fontes_personalizadas[chave] = (
+                fonte,
+                int(fonte.cget("size")),
+            )
+        return self._fontes_personalizadas[chave][0]
 
-            if self._tree_update_job:
+    def _capturar_fonte_estilo(self, nome: str, estilo: ttk.Style) -> None:
+        if nome in self._fontes_estilos:
+            return
+
+        fonte_base = estilo.lookup(nome, "font")
+        fonte_estilo = self._obter_fonte_escalavel(fonte_base) if fonte_base else ""
+        mapa_fontes = []
+        for estados, especificacao in estilo.map(nome, "font"):
+            fonte = self._obter_fonte_escalavel(especificacao)
+            mapa_fontes.append((estados, fonte))
+
+        if fonte_estilo and not isinstance(fonte_estilo, str):
+            estilo.configure(nome, font=fonte_estilo)
+        if mapa_fontes:
+            estilo.map(nome, font=mapa_fontes)
+        self._fontes_estilos[nome] = (fonte_estilo, mapa_fontes)
+
+        configuracoes = estilo.configure(nome) or {}
+        metricas = {
+            chave: configuracoes[chave]
+            for chave in ("padding", "tabmargins", "rowheight")
+            if chave in configuracoes
+        }
+        if metricas:
+            self._metricas_estilos[nome] = metricas
+
+    def _capturar_fontes_widgets(self, parent: tk.Misc) -> None:
+        if not self._fontes_nomeadas_base:
+            for nome in tkfont.names(self.root):
+                fonte = tkfont.nametofont(nome, root=self.root)
+                self._fontes_nomeadas_base[nome] = (
+                    fonte,
+                    int(fonte.cget("size")),
+                )
+
+        estilo = ttk.Style(self.root)
+        for widget in parent.winfo_children():
+            if widget.winfo_toplevel() is self.root:
                 try:
-                    self.root.after_cancel(self._tree_update_job)
-                except Exception:
-                    pass
-                finally:
-                    self._tree_update_job = None
+                    especificacao = widget.cget("font")
+                except tk.TclError:
+                    especificacao = ""
+                if especificacao and isinstance(widget, tk.Widget):
+                    fonte = self._obter_fonte_escalavel(especificacao)
+                    if not isinstance(fonte, str):
+                        widget.configure({"font": fonte})
 
-            if self._resize_release_job:
-                try:
-                    self.root.after_cancel(self._resize_release_job)
-                except Exception:
-                    pass
+                if isinstance(widget, ttk.Widget):
+                    nome_estilo = widget.cget("style") or widget.winfo_class()
+                    self._capturar_fonte_estilo(nome_estilo, estilo)
+                    if "Notebook" in nome_estilo:
+                        self._capturar_fonte_estilo(f"{nome_estilo}.Tab", estilo)
+                    if isinstance(widget, ttk.Treeview):
+                        self._capturar_fonte_estilo("Treeview.Heading", estilo)
+                    if isinstance(widget, ttk.LabelFrame):
+                        self._capturar_fonte_estilo("TLabelframe.Label", estilo)
 
-            self._resize_release_job = self.root.after(180, self._finalizar_redimensionamento)
-        except Exception:
-            pass
+                self._capturar_fontes_widgets(widget)
+
+    @staticmethod
+    def _tamanho_fonte_escalado(tamanho: int, escala: float) -> int:
+        escalado = int(round(tamanho * escala))
+        if tamanho > 0:
+            return max(1, escalado)
+        if tamanho < 0:
+            return min(-1, escalado)
+        return 0
+
+    def _aplicar_escala_interface(self, largura: int, forcar: bool = False) -> None:
+        escala = round(
+            escala_janela(largura, referencia=WINDOWS_CONFIG["width"]),
+            2,
+        )
+        if escala == self._escala_interface and not forcar:
+            return
+
+        self._escala_interface = escala
+        for fonte, tamanho in self._fontes_nomeadas_base.values():
+            fonte.configure(size=self._tamanho_fonte_escalado(tamanho, escala))
+        for fonte, tamanho in self._fontes_personalizadas.values():
+            fonte.configure(size=self._tamanho_fonte_escalado(tamanho, escala))
+
+        estilo = ttk.Style(self.root)
+        for nome, (fonte, mapa_fontes) in self._fontes_estilos.items():
+            if fonte:
+                estilo.configure(nome, font=fonte)
+            if mapa_fontes:
+                estilo.map(nome, font=mapa_fontes)
+        for nome, metricas in self._metricas_estilos.items():
+            estilo.configure(
+                nome,
+                **{
+                    chave: self._escalar_espacamento(valor, escala)
+                    for chave, valor in metricas.items()
+                },
+            )
+
+        self.frame_agendamentos.configure(width=round(AGENDAMENTOS_PANEL_WIDTH * escala))
+        self.frame_agendamentos_vazio.configure(
+            width=round((AGENDAMENTOS_PANEL_WIDTH - 40) * escala),
+            height=round(200 * escala),
+        )
+
+        for widget, (gerenciador, espacamentos) in self._espacamentos_base.items():
+            if not espacamentos or not widget.winfo_exists():
+                continue
+            configure = getattr(widget, f"{gerenciador}_configure")
+            configure(**{
+                chave: self._escalar_espacamento(valor, escala)
+                for chave, valor in espacamentos.items()
+            })
+
+        self._configurar_colunas_tree_agendamentos()
 
     def _finalizar_redimensionamento(self) -> None:
         # Retoma as atualizaÃ§Ãµes quando o usuÃ¡rio termina o resize
@@ -676,14 +846,15 @@ class MainWindow:
         # Configura as colunas fixas da treeview de agendamentos
         self.tree_agendamentos["displaycolumns"] = ("id", "automacao", "nome_job", "proxima", "status")
 
-        largura_total = 600
-        largura_id = 50
-        largura_proxima = 120
-        largura_status = 110
-        largura_nome_job = 180
+        escala = self._escala_interface
+        largura_total = round(600 * escala)
+        largura_id = round(50 * escala)
+        largura_proxima = round(120 * escala)
+        largura_status = round(110 * escala)
+        largura_nome_job = round(180 * escala)
         largura_automacao = largura_total - (largura_id + largura_proxima + largura_status + largura_nome_job)
 
-        self.tree_agendamentos.column("id", width=50, anchor="center")
+        self.tree_agendamentos.column("id", width=largura_id, anchor="center")
         self.tree_agendamentos.column("automacao", width=largura_automacao, anchor="w")
         self.tree_agendamentos.column("nome_job", width=180, stretch=True, anchor="w")
         self.tree_agendamentos.column("proxima", width=largura_proxima, anchor="center")
@@ -3061,6 +3232,7 @@ class MainWindow:
     def _alternar_tema(self) -> None:
         # Alterna entre claro e escuro e atualiza o rotulo do botao
         self.theme.alternar()
+        self._aplicar_escala_interface(self.root.winfo_width(), forcar=True)
         try:
             self._btn_tema.config(text=self.theme.rotulo_botao())
         except Exception:

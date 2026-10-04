@@ -197,6 +197,11 @@ def escala_largura(root, base=1920):
     return max(0.55, min(1.0, largura / base))
 
 
+def escala_janela(largura, referencia=1800, minimo=0.8):
+    """Reduz a interface conforme a largura da janela, sem passar de 20%."""
+    return max(minimo, min(1.0, largura / referencia))
+
+
 def largura_campo(root, largura_base, minimo=8):
     """
     Converte uma largura de campo para a escala da tela atual.
