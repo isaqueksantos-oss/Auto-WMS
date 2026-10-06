@@ -4,7 +4,7 @@ import time
 import shutil
 import subprocess
 from pathlib import Path
-from playwright.sync_api import sync_playwright
+#from playwright.sync_api import sync_playwright
 from interface.utils.config_manager import carregar_config
 from interface.automations.execution_log import registrar_evento_execucao
 from interface.automations.base_automation import (  # type: ignore
