@@ -587,7 +587,7 @@ def _renavegar_ate_mapeamento(log_fn=None):
         deslocamento_x=0.8,
         n_clicks=5,
         clicar=True,
-        modo="auto",
+        modo="neutro",
         ignorar_textos=ignorar_textos,
         stop_checker=lambda: stop_requested,
     )
@@ -1172,7 +1172,7 @@ def iniciar_automacao(
         deslocamento_x=0.8,
         n_clicks=5,
         clicar=True,
-        modo="auto",
+        modo="neutro",
         ignorar_textos=ignorar_textos,
         stop_checker=lambda: stop_requested,
     )
