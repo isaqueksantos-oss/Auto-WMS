@@ -586,27 +586,27 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
         garantir_foco_wms()
 
         ignorar_textos = ["completar"]
-        opcoes_textos_status = {"encontrou_herdar_sobrescrever": ["herdar mapeamento", "sobrescrever"]}
+        opcoes_textos_status = {"encontrou_herdar_map": ["herdar mapeamento"]}
         resultado = aguardar_textos(TRANSACAO_MAPEAMENTO, opcoes_textos_status, timeout=1, 
                                     log_fn=log, ordem_blocos=[7, 12], deslocamento_x=0.0, 
-                                    n_clicks=0, clicar=False, modo="neutro", ignorar_textos=ignorar_textos)
+                                    n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=True, ignorar_textos=ignorar_textos)
 
         print(f"herdar map.: {resultado}")
 
         if resultado is None and time.time() - timer <= 10:
             continue
 
-        elif any(texto in opcoes_textos_status["encontrou_herdar_sobrescrever"] for texto in resultado):
+        elif any(texto in opcoes_textos_status["encontrou_herdar_map"] for texto in resultado):
             flag_tela_mapeamento = True
             break
 
-        elif not any(texto in opcoes_textos_status["encontrou_herdar_sobrescrever"] for texto in resultado):
+        elif not any(texto in opcoes_textos_status["encontrou_herdar_map"] for texto in resultado):
             log("[WARN] Transação não encontrada. Tentando novamente...")
             flag_tela_mapeamento = False
             time.sleep(0.5)
             continue
 
-        elif not any(texto in opcoes_textos_status["encontrou_herdar_sobrescrever"] for texto in resultado) and time.time() - timer > 10:
+        elif not any(texto in opcoes_textos_status["encontrou_herdar_map"] for texto in resultado) and time.time() - timer > 10:
             flag_tela_mapeamento = False
             log(f"{time.strftime('[%H:%M:%S]')} "
                 f"[ERRO] Tela de pesquisa não encontrada após várias tentativas. "
@@ -662,13 +662,7 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
     )
 
     timer_enter_query = time.time()
-    mensagem_enter_query = {
-        "mensagem_enter_query": [
-            "enterquery",
-            "enter query",
-            "enter",
-            "query",
-        ]
+    mensagem_enter_query = {"mensagem_enter_query": ["enterquery", "enter query", "enter", "query"]
     }
     while True:
         if stop_requested:
@@ -685,6 +679,7 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
             n_clicks=0,
             clicar=False,
             modo="neutro",
+            roi_retry_between_blocks=True,
             stop_checker=lambda: stop_requested,
         )
         if resultado_enter_query:
@@ -744,7 +739,7 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
                                 "encontrou_press_f8": ["press f8", "press", "f8", "press F8 to execute", "f8 to execute"]}
         resultado = aguardar_textos(TRANSACAO_MAPEAMENTO, opcoes_textos_status1, timeout=0.5, 
                                     log_fn=log, ordem_blocos=[21], deslocamento_x=0.0, 
-                                    n_clicks=0, clicar=False, modo="neutro", ignorar_textos=ignorar_textos)
+                                    n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=True, ignorar_textos=ignorar_textos)
 
         print(f"record.: {resultado}")
 
@@ -872,6 +867,7 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
             n_clicks=0,
             clicar=False,
             modo="neutro",
+            roi_retry_between_blocks=True,
             stop_checker=lambda: stop_requested,
         )
         if resultado_enter_query:
@@ -951,7 +947,7 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
                                 "encontrou_pesquisa_nao_retornou": ["a pesquisa não retornou", "a pesquisa", "a pesquisa não", "não retornou", "pesquisa não"]}
         resultado_texto_status2 = aguardar_textos(TRANSACAO_MAPEAMENTO,opcoes_textos_status2, timeout=0.5, 
                                                 log_fn=log, ordem_blocos=[21], deslocamento_x=0.0,n_clicks=0,
-                                                clicar=False, modo="neutro", stop_checker=lambda: stop_requested,)
+                                                clicar=False, modo="neutro", roi_retry_between_blocks=True, stop_checker=lambda: stop_requested,)
 
         print(f"resultado_texto_status2: {resultado_texto_status2}")
 
@@ -1233,6 +1229,7 @@ def iniciar_alteracao_itens(data, status_cb=None):
 
             return resultados
 
+    alt_f4()
     return resultados
 
 
@@ -1296,6 +1293,7 @@ def iniciar_automacao(
         n_clicks=5,
         clicar=True,
         modo="neutro",
+        roi_retry_between_blocks=True,
         ignorar_textos=["programas"],
         stop_checker=lambda: stop_requested,
     )
