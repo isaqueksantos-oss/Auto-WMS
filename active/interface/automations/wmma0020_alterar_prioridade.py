@@ -56,7 +56,8 @@ PAUSA_APOS_TAB = 0.10
 PAUSA_APOS_ENTER_QUERY = 0.30
 
 # Pausa após F8 (executar a consulta), antes de ler o resultado.
-PAUSA_APOS_EXECUTAR_CONSULTA = 0.30
+PAUSA_APOS_EXECUTAR_CONSULTA = 1
+PAUSA_APOS_SALVAR_CONSULTA = 1
 
 # Tempo máximo de busca pela mensagem na barra de status.
 TIMEOUT_BARRA_STATUS = 0.50
@@ -717,9 +718,10 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
             )
     
     atalho_wms(executar_campo)
+    time.sleep(PAUSA_APOS_EXECUTAR_CONSULTA)
 
     flag_item_encontrado = False
-    contador_sem_list_values = 0
+    contador_press_f8 = 0
     timer = time.time()
 
     while True:
@@ -738,8 +740,8 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
         garantir_foco_wms()
 
         ignorar_textos = ["list of values"]
-        opcoes_textos_status1 = {"encontrou_enter_query": ["enter a query", "enter", "query"],
-                                "encontrou_pesquisa_nao_retornou": ["a pesquisa não retornou", "a pesquisa", "a pesquisa não", "não retornou", "pesquisa não"]}
+        opcoes_textos_status1 = {"encontrou_pesquisa_nao_retornou": ["a pesquisa não retornou", "a pesquisa", "a pesquisa não", "não retornou", "pesquisa não"],
+                                "encontrou_press_f8": ["press f8", "press", "f8", "press F8 to execute", "f8 to execute"]}
         resultado = aguardar_textos(TRANSACAO_MAPEAMENTO, opcoes_textos_status1, timeout=0.5, 
                                     log_fn=log, ordem_blocos=[21], deslocamento_x=0.0, 
                                     n_clicks=0, clicar=False, modo="neutro", ignorar_textos=ignorar_textos)
@@ -747,11 +749,12 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
         print(f"record.: {resultado}")
 
         if resultado is None:
-            contador_sem_list_values += 1
-            if contador_sem_list_values >= 2:
+            contador_press_f8 += 1
+            if contador_press_f8 >= 1:
                 flag_item_encontrado = "sim"
-                log("[INFO] 'Enter a query' ausente em 2 verificações. Item considerado encontrado.")
+                log("[INFO] 'Enter a query' ausente em 1 verificação. Item considerado encontrado.")
                 break
+
 
             if time.time() - timer > 10:
                 flag_item_encontrado = "nao_retornou"
@@ -771,8 +774,8 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
             flag_item_encontrado = "nao_retornou"
             break
 
-        elif any(texto in opcoes_textos_status1["encontrou_enter_query"] for texto in resultado):
-            contador_sem_list_values = 0
+        elif any(texto in opcoes_textos_status1["encontrou_press_f8"] for texto in resultado):
+            contador_press_f8 = 0
             if time.time() - timer >= 5:
                 flag_item_encontrado = "nao_retornou"
                 break
@@ -954,7 +957,7 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
 
         if resultado_texto_status2 is None:
             contador_sem_mensagem += 1
-            if contador_sem_mensagem < 2:
+            if contador_sem_mensagem < 1:
                 time.sleep(0.5)
                 continue
 
@@ -1036,6 +1039,7 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
 
         # F10 -> salva a alteração.
         atalho_wms(salvar_registro)
+        time.sleep(PAUSA_APOS_SALVAR_CONSULTA)
 
         if aguardar_transacao_completada(timeout=4.0):
             if callable(status_cb):
