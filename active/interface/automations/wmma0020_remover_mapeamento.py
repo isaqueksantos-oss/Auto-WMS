@@ -562,7 +562,7 @@ def _processar_linha(i, planta, item, classe, status_cb):
         ordem_blocos=[7, 12, 8, 13],
         deslocamento_x=0.0,
         n_clicks=1,
-        clicar=True,
+        clicar=False,
         modo="auto",
         ignorar_textos=[],
         roi_attempts=2,
