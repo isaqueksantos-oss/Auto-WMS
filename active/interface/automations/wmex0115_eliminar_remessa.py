@@ -608,6 +608,9 @@ def iniciar_captura_remessas(transacao: str, plantas: str, root=None, status_cal
 
     time.sleep(2)
     while cursor_carregando():
+        if stop_requested:
+            log("[ABORT] Parada solicitada antes da pesquisa.")
+            return resultado_remessas
         print("Aguardando...")
         time.sleep(0.5)
 
