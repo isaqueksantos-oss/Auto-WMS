@@ -1,6 +1,8 @@
 ﻿import os
 import time
 import re
+import ctypes
+from ctypes import wintypes
 import pyautogui
 import pyperclip
 import keyboard as kb
@@ -44,9 +46,20 @@ status_callback = None  # funÃ§Ã£o de callback opcional: fn(row_index:int, s
 stop_requested = False
 stop_hotkey_handle = None
 ABORTAR_AUTOMACAO_POR_LEITURAS_VAZIAS = "__ABORTAR_AUTOMACAO_POR_LEITURAS_VAZIAS__"
+IDC_APPSTARTING = 32650  # seta + loading
+IDC_WAIT = 32514         # loading/ampulheta
 
 
 # =================== UTILITÃRIOS =================== #
+
+class CURSORINFO(ctypes.Structure):
+    _fields_ = [
+        ("cbSize", wintypes.DWORD),
+        ("flags", wintypes.DWORD),
+        ("hCursor", wintypes.HANDLE),
+        ("ptScreenPos", wintypes.POINT),
+    ]
+
 def request_stop():
     global stop_requested
     if stop_requested:
@@ -525,6 +538,23 @@ def capturar_hash_tela():
         gray = np.array(screenshot.convert("L").resize((64, 64), Image.BILINEAR))
         return imagehash.phash(Image.fromarray(gray))
 
+
+
+
+def cursor_carregando():
+    ci = CURSORINFO()
+    ci.cbSize = ctypes.sizeof(CURSORINFO)
+
+    ctypes.windll.user32.GetCursorInfo(ctypes.byref(ci))
+
+    h_wait = ctypes.windll.user32.LoadCursorW(0, IDC_WAIT)
+    h_appstarting = ctypes.windll.user32.LoadCursorW(0, IDC_APPSTARTING)
+
+    return ci.hCursor in (h_wait, h_appstarting)
+
+
+
+
 # =================== ETAPA 1 â€” CAPTURA DE REMESSAS =================== #
 
 def iniciar_captura_remessas(transacao: str, plantas: str, root=None, status_callback=None, log_fn=print, lojas_poupar=None):
@@ -582,7 +612,12 @@ def iniciar_captura_remessas(transacao: str, plantas: str, root=None, status_cal
         pyautogui.click(cx, cy)
         break
 
-    # Etapa 1.2 - aguardar execuÃ§Ã£o da pesquisa
+    # Etapa 1.2 - aguardar execução da pesquisa
+
+    time.sleep(2)
+    while cursor_carregando():
+        print("Aguardando...")
+        time.sleep(0.5)
 
     start = time.time()
     count = 0
@@ -595,9 +630,9 @@ def iniciar_captura_remessas(transacao: str, plantas: str, root=None, status_cal
         opcoes_textos_status = {"mensagem_planta": ["planta", "list of values", "list", "values"]}
         resultado = aguardar_textos(transacao, opcoes_textos_status, timeout=0.1, 
                                     log_fn=log, ordem_blocos=[21], deslocamento_x=0.0, 
-                                    n_clicks=0, clicar=False, modo="neutro", ignorar_textos=ignorar_textos,
+                                    n_clicks=0, clicar=False, modo="auto", ignorar_textos=ignorar_textos,
                                     stop_checker=lambda: stop_requested)
-        if not resultado and count > 0:
+        if not resultado and count > 1:
             log("[INFO] Pesquisa finalizada.")
             break
         elif not resultado:
