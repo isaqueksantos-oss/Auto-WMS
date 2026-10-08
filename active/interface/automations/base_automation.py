@@ -1,5 +1,7 @@
 import time
 import cv2
+import ctypes
+from ctypes import wintypes
 import numpy as np
 import pyautogui
 import pyperclip
@@ -14,6 +16,16 @@ registry = ElementRegistry()
 
 CONFIANCA_PADRAO = 0.7
 EXIBIR_VISUALMENTE = False
+
+
+class CURSORINFO(ctypes.Structure):
+    _fields_ = [
+        ("cbSize", wintypes.DWORD),
+        ("flags", wintypes.DWORD),
+        ("hCursor", wintypes.HANDLE),
+        ("ptScreenPos", wintypes.POINT),
+    ]
+
 
 def focus_manager(palavras_chave=None):
     """

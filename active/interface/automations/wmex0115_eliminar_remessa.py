@@ -2,7 +2,6 @@
 import time
 import re
 import ctypes
-from ctypes import wintypes
 import pyautogui
 import pyperclip
 import keyboard as kb
@@ -11,6 +10,7 @@ import imagehash
 import numpy as np
 from interface.automations.execution_log import registrar_evento_execucao
 from interface.automations.base_automation import (
+    CURSORINFO,
     executar_campo,
     proximo_campo,
     proximo_bloco,
@@ -51,14 +51,6 @@ IDC_WAIT = 32514         # loading/ampulheta
 
 
 # =================== UTILITÃRIOS =================== #
-
-class CURSORINFO(ctypes.Structure):
-    _fields_ = [
-        ("cbSize", wintypes.DWORD),
-        ("flags", wintypes.DWORD),
-        ("hCursor", wintypes.HANDLE),
-        ("ptScreenPos", wintypes.POINT),
-    ]
 
 def request_stop():
     global stop_requested
