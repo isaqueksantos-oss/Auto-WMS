@@ -444,7 +444,7 @@ def aguardar_textos(
                     if resultado:
                         return resultado
 
-        time.sleep(0.25)
+        time.sleep(0.1)
 
     total_elapsed = time.time() - start
     log_fn(f"[SCAN TOTAL] transacao='{transacao}' tempo_total={total_elapsed:.2f}s resultado=timeout")
