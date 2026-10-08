@@ -41,13 +41,15 @@ TRANSACAO_CAPTURAR = "wmex1090"
 TRANSACAO_VERIFICAR = "wmco0510"
 TRANSACAO_ELIMINAR = "wmex0115"
 
+# para o load do cursor:
+ABORTAR_AUTOMACAO_POR_LEITURAS_VAZIAS = "__ABORTAR_AUTOMACAO_POR_LEITURAS_VAZIAS__"
+IDC_APPSTARTING = 32650  # seta + loading
+IDC_WAIT = 32514         # loading/ampulheta
+
 logger = print  # funÃ§Ã£o de log externa (pode ser substituÃ­da)
 status_callback = None  # funÃ§Ã£o de callback opcional: fn(row_index:int, status:str, value:Optional[str]=None)
 stop_requested = False
 stop_hotkey_handle = None
-ABORTAR_AUTOMACAO_POR_LEITURAS_VAZIAS = "__ABORTAR_AUTOMACAO_POR_LEITURAS_VAZIAS__"
-IDC_APPSTARTING = 32650  # seta + loading
-IDC_WAIT = 32514         # loading/ampulheta
 
 
 # =================== UTILITÃRIOS =================== #
@@ -529,8 +531,6 @@ def capturar_hash_tela():
         screenshot = pyautogui.screenshot()
         gray = np.array(screenshot.convert("L").resize((64, 64), Image.BILINEAR))
         return imagehash.phash(Image.fromarray(gray))
-
-
 
 
 def cursor_carregando():
