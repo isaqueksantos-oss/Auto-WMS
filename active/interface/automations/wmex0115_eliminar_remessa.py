@@ -1103,12 +1103,13 @@ def iniciar_automacao(
                 
 
             remessas = remessas_agg
-            remessas = verificar_restricoes_poupar(
-                remessas,
-                restricoes_poupar=restricoes,
-                log_fn=log_fn,
-                restricoes_callback=restricoes_callback,
-            )
+            if restricoes:
+                remessas = verificar_restricoes_poupar(
+                    remessas,
+                    restricoes_poupar=restricoes,
+                    log_fn=log_fn,
+                    restricoes_callback=restricoes_callback,
+                )
             if remessas and callable(captura_callback):
                 try:
                     captura_callback(remessas)
