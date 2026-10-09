@@ -50,7 +50,7 @@ PAUSA_APOS_DIGITAR = 0.15
 PAUSA_APOS_TAB = 0.10
 
 # Pausa após F7 (entrar em modo consulta) no bloco de classes.
-PAUSA_APOS_ENTER_QUERY = 0.30
+PAUSA_APOS_ATIVAR_CONSULTA = 0.50
 
 # Pausa após F8 (executar a consulta), antes de ler o resultado.
 PAUSA_APOS_EXECUTAR_CONSULTA = 0.2
@@ -727,7 +727,12 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
     # --- Pesquisa item --- #
 
 
+    time.sleep(0.2)
     atalho_wms(ativar_edicao)
+    atalho_wms(ativar_edicao)
+    time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
+    limpar_campo_wms()
+    time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
     escrever_wms(str(item))
 
     hash_ref, _ = detectar_mudanca_tela(
@@ -760,7 +765,7 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
         if resultado_enter_query:
             break
 
-        if time.time() - timer_enter_query > 10:
+        elif time.time() - timer_enter_query > 10:
             motivo = "WMS_nao_pronto_para_consulta"
             log(
                 f"{time.strftime('[%H:%M:%S]')} "
