@@ -827,7 +827,6 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
     time.sleep(PAUSA_APOS_TAB)
 
     # F7 -> entra em modo consulta (Enter-Query).
-    time.sleep(0.2)
     atalho_wms(ativar_edicao)
     time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
 
