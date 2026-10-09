@@ -59,8 +59,8 @@ PAUSA_APOS_SALVAR_CONSULTA = 1
 # Tempo máximo de busca pela mensagem na barra de status.
 TIMEOUT_BARRA_STATUS = 0.50
 
-PAUSA_APOS_LIMPAR_CAMPO = 0.15
-PAUSA_APOS_LIMPAR = 0.30
+PAUSA_APOS_LIMPAR_CAMPO = 0.2
+PAUSA_APOS_LIMPAR = 0.20
 PAUSA_ANTES_PROXIMO_BLOCO = 0.20
 
 # --- Verificação de duplicidade (mais rápida) --- #
@@ -917,34 +917,34 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
     time.sleep(0.2)
 
     limpar_campo_wms()
-    time.sleep(0.2)
+    time.sleep(PAUSA_APOS_LIMPAR_CAMPO)
     escrever_wms(str(planta))
     proximo_campo_wms()
 
     limpar_campo_wms()
-    time.sleep(0.2)
+    time.sleep(PAUSA_APOS_LIMPAR_CAMPO)
     escrever_wms(str(classe))
     proximo_campo_wms()
     time.sleep(0.2)
     proximo_campo_wms()
 
     limpar_campo_wms()
-    time.sleep(0.2)
+    time.sleep(PAUSA_APOS_LIMPAR_CAMPO)
     escrever_wms(str(priori))
     proximo_campo_wms()
 
     limpar_campo_wms()
-    time.sleep(0.2)
+    time.sleep(PAUSA_APOS_LIMPAR_CAMPO)
     escrever_wms(str(restricao))
     proximo_campo_wms()
 
     limpar_campo_wms()
-    time.sleep(0.2)
+    time.sleep(PAUSA_APOS_LIMPAR_CAMPO)
     escrever_wms(str(lastro))
     proximo_campo_wms()
 
     limpar_campo_wms()
-    time.sleep(0.2)
+    time.sleep(PAUSA_APOS_LIMPAR_CAMPO)
     escrever_wms(str(camada))
     proximo_campo_wms()
 
