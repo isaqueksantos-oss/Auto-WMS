@@ -55,7 +55,7 @@ PAUSA_APOS_DIGITAR = 0.15
 PAUSA_APOS_TAB = 0.10
 
 # Pausa após F7 (entrar em modo consulta) no bloco de classes.
-PAUSA_APOS_ENTER_QUERY = 0.30
+PAUSA_APOS_ATIVAR_CONSULTA = 0.20
 
 # Pausa após F8 (executar a consulta), antes de ler o resultado.
 PAUSA_APOS_EXECUTAR_CONSULTA = 0.2
@@ -642,8 +642,12 @@ def _processar_linha(i, planta, item, classe, restricao, status_cb):
 
     # --- Pesquisa item --- #
 
-
+    time.sleep(0.2)
     atalho_wms(ativar_edicao)
+    atalho_wms(ativar_edicao)
+    time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
+    limpar_campo_wms()
+    time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
     escrever_wms(str(item))
 
     hash_ref, _ = detectar_mudanca_tela(
@@ -822,7 +826,7 @@ def _processar_linha(i, planta, item, classe, restricao, status_cb):
 
     # F7 -> entra em modo consulta (Enter-Query).
     atalho_wms(ativar_edicao)
-    time.sleep(PAUSA_APOS_ENTER_QUERY)
+    time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
 
     timer_enter_query = time.time()
     opcoes_enter_query = {
@@ -879,14 +883,27 @@ def _processar_linha(i, planta, item, classe, restricao, status_cb):
             }
 
     # Preenche os critérios da consulta.
+    limpar_campo_wms()
+    time.sleep(PAUSA_APOS_LIMPAR_CAMPO)
     escrever_wms(str(planta))
     proximo_campo_wms()
+    time.sleep(0.2)
+    limpar_campo_wms()
+    time.sleep(PAUSA_APOS_LIMPAR_CAMPO)
     escrever_wms(str(classe))
 
     # F8 -> executa a consulta.
     atalho_wms(executar_campo)
     time.sleep(PAUSA_APOS_EXECUTAR_CONSULTA)
 
+    while cursor_carregando():
+        if stop_requested:
+            log("[ABORT] Parada solicitada antes da pesquisa.")
+            return resultado_parcial
+        print("Aguardando...")
+        time.sleep(0.1)
+
+        
     # O WMS pode ter caído durante a consulta.
     #if detectar_erro_wms_caido(timeout=0.5):
     #    raise WMSCaiuError()
