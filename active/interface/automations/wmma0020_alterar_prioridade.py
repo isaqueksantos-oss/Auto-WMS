@@ -64,7 +64,7 @@ PAUSA_APOS_SALVAR_CONSULTA = 1
 # Tempo máximo de busca pela mensagem na barra de status.
 TIMEOUT_BARRA_STATUS = 0.50
 
-PAUSA_APOS_LIMPAR_CAMPO = 0.3
+PAUSA_APOS_LIMPAR_CAMPO = 0.2
 PAUSA_APOS_LIMPAR = 0.30
 PAUSA_ANTES_PROXIMO_BLOCO = 0.20
 
@@ -829,10 +829,8 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
     # F7 -> entra em modo consulta (Enter-Query).
     time.sleep(0.2)
     atalho_wms(ativar_edicao)
-    atalho_wms(ativar_edicao)
     time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
-    limpar_campo_wms()
-    time.sleep(PAUSA_APOS_LIMPAR_CAMPO)
+
 
     timer_enter_query = time.time()
     opcoes_enter_query = {
@@ -865,7 +863,7 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
         if resultado_enter_query:
             break
 
-        if time.time() - timer_enter_query > 10:
+        elif time.time() - timer_enter_query > 10:
             log(
                 f"{time.strftime('[%H:%M:%S]')} "
                 "[WARN] Mensagem 'enter a query' não apareceu em 10 segundos. "
@@ -893,11 +891,21 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
     time.sleep(PAUSA_APOS_LIMPAR_CAMPO)
     escrever_wms(str(planta))
     proximo_campo_wms()
+    time.sleep(0.2)
+    limpar_campo_wms()
+    time.sleep(PAUSA_APOS_LIMPAR_CAMPO)
     escrever_wms(str(classe))
 
     # F8 -> executa a consulta.
     atalho_wms(executar_campo)
     time.sleep(PAUSA_APOS_EXECUTAR_CONSULTA)
+
+    while cursor_carregando():
+        if stop_requested:
+            log("[ABORT] Parada solicitada antes da pesquisa.")
+            return resultado_parcial
+        print("Aguardando...")
+        time.sleep(0.1)
 
     # O WMS pode ter caído durante a consulta.
     #if detectar_erro_wms_caido(timeout=0.5):
@@ -988,6 +996,7 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
 
         # Limpa o valor atual antes de gravar o novo.
         limpar_campo_wms()
+        time.sleep(PAUSA_APOS_LIMPAR_CAMPO)
         escrever_wms(str(prioridade))
 
         # F10 -> salva a alteração.
