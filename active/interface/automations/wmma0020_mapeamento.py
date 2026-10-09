@@ -741,7 +741,7 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
         log_fn=lambda *_: None,
     )
 
-    timer_enter_query = time.time()
+    timer = time.time()
     mensagem_enter_query = {"mensagem_enter_query": ["enterquery", "enter query", "enter", "query"]
     }
     while True:
@@ -765,7 +765,7 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
         if resultado_enter_query:
             break
 
-        elif time.time() - timer_enter_query > 10:
+        elif time.time() - timer > 10:
             motivo = "WMS_nao_pronto_para_consulta"
             log(
                 f"{time.strftime('[%H:%M:%S]')} "
