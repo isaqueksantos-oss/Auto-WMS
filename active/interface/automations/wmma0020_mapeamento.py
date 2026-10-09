@@ -732,7 +732,7 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
     atalho_wms(ativar_edicao)
     time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
     limpar_campo_wms()
-    time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
+    time.sleep(PAUSA_APOS_LIMPAR_CAMPO)
     escrever_wms(str(item))
 
     hash_ref, _ = detectar_mudanca_tela(
@@ -916,9 +916,13 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
     atalho_wms(inserir_registro)
     time.sleep(0.2)
 
+    limpar_campo_wms()
+    time.sleep(0.2)
     escrever_wms(str(planta))
     proximo_campo_wms()
 
+    limpar_campo_wms()
+    time.sleep(0.2)
     escrever_wms(str(classe))
     proximo_campo_wms()
     time.sleep(0.2)

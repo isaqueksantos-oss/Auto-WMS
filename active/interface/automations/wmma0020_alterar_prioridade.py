@@ -64,7 +64,7 @@ PAUSA_APOS_SALVAR_CONSULTA = 1
 # Tempo máximo de busca pela mensagem na barra de status.
 TIMEOUT_BARRA_STATUS = 0.50
 
-PAUSA_APOS_LIMPAR_CAMPO = 0.5
+PAUSA_APOS_LIMPAR_CAMPO = 0.3
 PAUSA_APOS_LIMPAR = 0.30
 PAUSA_ANTES_PROXIMO_BLOCO = 0.20
 
@@ -832,7 +832,7 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
     atalho_wms(ativar_edicao)
     time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
     limpar_campo_wms()
-    time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
+    time.sleep(PAUSA_APOS_LIMPAR_CAMPO)
 
     timer_enter_query = time.time()
     opcoes_enter_query = {
@@ -889,6 +889,8 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
             }
 
     # Preenche os critérios da consulta.
+    limpar_campo_wms()
+    time.sleep(PAUSA_APOS_LIMPAR_CAMPO)
     escrever_wms(str(planta))
     proximo_campo_wms()
     escrever_wms(str(classe))
