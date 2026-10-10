@@ -2541,7 +2541,13 @@ class MainWindow:
             # status_callback may be called as (idx, status) or (idx, status, value)
             def _status_cb(idx, status, value=None):
                 if excel_input:
-                    self.root.after(0, self._excel_status_update, excel_input, idx, status, value)
+                    # Nesta automação, o valor é o item e a primeira coluna é a planta.
+                    valor_busca = (
+                        None
+                        if self._nome_automacao_chave(nome) == "remover mapeamento"
+                        else value
+                    )
+                    self.root.after(0, self._excel_status_update, excel_input, idx, status, valor_busca)
 
             modulo.status_callback = _status_cb
             def _captura_cb(remessas_capturadas):

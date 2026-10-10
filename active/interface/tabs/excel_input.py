@@ -73,29 +73,41 @@ class ExcelInput(tk.Text):
         Atualiza ou adiciona uma coluna de status na linha indicada.
         row_index é 1-based.
         """
-        lines = self.get("1.0", tk.END).splitlines()
-        abs_index = row_index - 1
-        if abs_index < 0 or abs_index >= len(lines):
-            return False
+        estado_original = str(self.cget("state"))
+        if estado_original != "normal":
+            self.configure(state="normal")
 
-        parts = lines[abs_index].rstrip().split('\t')
-        possible_statuses = {
-            "Sucesso", "Duplicado", "Não encontrado",
-            "Timeout", "Parcialmente Sucesso", "Em progresso"
-        }
+        try:
+            lines = self.get("1.0", tk.END).splitlines()
+            abs_index = row_index - 1
+            if abs_index < 0 or abs_index >= len(lines):
+                return False
 
-        if parts and parts[-1] in possible_statuses:
-            parts[-1] = status
-        else:
-            parts.append(status)
+            parts = lines[abs_index].rstrip().split('\t')
+            possible_statuses = {
+                "Sucesso", "Duplicado", "Não encontrado",
+                "Timeout", "Parcialmente Sucesso", "Em progresso",
+                "Alterado", "Inexistente", "Concluído",
+                "Mapeamento_inexistente", "Transacao_nao_encontrada",
+                "Item_nao_retornou", "Item não encontrado",
+                "Nao_confirmado", "Falha_wms", "Foco_perdido",
+            }
 
-        lines[abs_index] = '\t'.join(parts)
-        new_text = '\n'.join(lines) + '\n'
+            if parts and parts[-1] in possible_statuses:
+                parts[-1] = status
+            else:
+                parts.append(status)
 
-        self.delete("1.0", tk.END)
-        self.insert("1.0", new_text)
-        self.see(f"{abs_index + 1}.0")
-        return True
+            lines[abs_index] = '\t'.join(parts)
+            new_text = '\n'.join(lines) + '\n'
+
+            self.delete("1.0", tk.END)
+            self.insert("1.0", new_text)
+            self.see(f"{abs_index + 1}.0")
+            return True
+        finally:
+            if estado_original != "normal":
+                self.configure(state=estado_original)
 
     # ----------------------------------------------------------------------
     # ---------------------------- REPLACE ---------------------------------
