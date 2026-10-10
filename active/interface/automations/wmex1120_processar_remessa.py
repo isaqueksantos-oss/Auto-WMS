@@ -355,7 +355,7 @@ def iniciar_processamento_remessas(transacao, remessas):
 
 # =================== ETAPA 3 — ORQUESTRAÇÃO =================== #
 def iniciar_automacao(data=None, planta=None, log_fn=print):
-    registrar_evento_execucao(
+    inicio_execucao = registrar_evento_execucao(
         "wmex1120_processar_remessa",
         "inicio",
         status="iniciado",
@@ -380,7 +380,7 @@ def iniciar_automacao(data=None, planta=None, log_fn=print):
                                 n_clicks=5, clicar=True, modo="auto", ignorar_textos=ignorar_textos,
                                 stop_checker=lambda: stop_requested)
     if not resultado:
-        registrar_evento_execucao("wmex1120_processar_remessa", "fim", status="erro", detalhe="Tela inicial não confirmada")
+        registrar_evento_execucao("wmex1120_processar_remessa", "fim", inicio=inicio_execucao, status="erro", detalhe="Tela inicial não confirmada")
         return log("[ERRO] Tela inicial não confirmada.")
 
     # --- Determina fluxo --- #
@@ -388,7 +388,7 @@ def iniciar_automacao(data=None, planta=None, log_fn=print):
         log(f"[INFO] Remessas fornecidas manualmente ({len(data)}).")
 
         if not digitar_transacao(TRANSACAO_PROCESSAR):
-            registrar_evento_execucao("wmex1120_processar_remessa", "fim", status="erro", detalhe=f"Falha ao digitar transação {TRANSACAO_PROCESSAR}")
+            registrar_evento_execucao("wmex1120_processar_remessa", "fim", inicio=inicio_execucao, status="erro", detalhe=f"Falha ao digitar transação {TRANSACAO_PROCESSAR}")
             return log(f"[ERRO] Falha ao digitar transação {TRANSACAO_PROCESSAR}.")
         time.sleep(0.5)
 
@@ -406,7 +406,7 @@ def iniciar_automacao(data=None, planta=None, log_fn=print):
         log_fn("[INFO] Nenhuma remessa fornecida. Iniciando captura automática...")
 
         if not digitar_transacao(TRANSACAO_CAPTURAR):
-            registrar_evento_execucao("wmex1120_processar_remessa", "fim", status="erro", detalhe=f"Falha ao digitar transação {TRANSACAO_CAPTURAR}")
+            registrar_evento_execucao("wmex1120_processar_remessa", "fim", inicio=inicio_execucao, status="erro", detalhe=f"Falha ao digitar transação {TRANSACAO_CAPTURAR}")
             return log_fn(f"[ERRO] Falha ao digitar transação {TRANSACAO_CAPTURAR}.")
 
         # Aguarda mudança após digitação da transação
@@ -418,7 +418,7 @@ def iniciar_automacao(data=None, planta=None, log_fn=print):
         remessas = iniciar_captura_remessas(TRANSACAO_CAPTURAR, planta)
 
         if not remessas:
-            registrar_evento_execucao("wmex1120_processar_remessa", "fim", status="sem_dados", detalhe="Nenhuma remessa encontrada")
+            registrar_evento_execucao("wmex1120_processar_remessa", "fim", inicio=inicio_execucao, status="sem_dados", detalhe="Nenhuma remessa encontrada")
             log_fn("[INFO] Nenhuma remessa encontrada.")
             return []
 
@@ -439,11 +439,11 @@ def iniciar_automacao(data=None, planta=None, log_fn=print):
                                     n_clicks=5, clicar=True, modo="auto", ignorar_textos=ignorar_textos,
                                     stop_checker=lambda: stop_requested)
         if not resultado:
-            registrar_evento_execucao("wmex1120_processar_remessa", "fim", status="erro", detalhe="Tela inicial não confirmada após captura")
+            registrar_evento_execucao("wmex1120_processar_remessa", "fim", inicio=inicio_execucao, status="erro", detalhe="Tela inicial não confirmada após captura")
             return log_fn("[ERRO] Tela inicial não confirmada.")
 
         if not digitar_transacao(TRANSACAO_PROCESSAR):
-            registrar_evento_execucao("wmex1120_processar_remessa", "fim", status="erro", detalhe=f"Falha ao digitar transação {TRANSACAO_PROCESSAR}")
+            registrar_evento_execucao("wmex1120_processar_remessa", "fim", inicio=inicio_execucao, status="erro", detalhe=f"Falha ao digitar transação {TRANSACAO_PROCESSAR}")
             return log_fn(f"[ERRO] Falha ao digitar transação {TRANSACAO_CAPTURAR}.")
 
         hash_ref, mudou = detectar_mudanca_tela(hash_ref, limiar=6, max_espera=3.5, log_fn=log_fn)
@@ -456,6 +456,7 @@ def iniciar_automacao(data=None, planta=None, log_fn=print):
     registrar_evento_execucao(
         "wmex1120_processar_remessa",
         "fim",
+        inicio=inicio_execucao,
         status="sucesso",
         linhas_processadas=len(resultados) if resultados else 0,
     )

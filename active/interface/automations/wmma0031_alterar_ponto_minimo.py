@@ -231,7 +231,7 @@ def iniciar_automacao(
 
     base.clear_stop()
 
-    registrar_evento_execucao(
+    inicio_execucao = registrar_evento_execucao(
         "wmma0031_alterar_ponto_minimo",
         "inicio",
         status="iniciado",
@@ -245,6 +245,7 @@ def iniciar_automacao(
         registrar_evento_execucao(
             "wmma0031_alterar_ponto_minimo",
             "fim",
+            inicio=inicio_execucao,
             status="erro",
             detalhe="Não foi possível abrir a transação",
         )
@@ -268,6 +269,7 @@ def iniciar_automacao(
     registrar_evento_execucao(
         "wmma0031_alterar_ponto_minimo",
         "fim",
+        inicio=inicio_execucao,
         status="sucesso",
         **totais,
     )

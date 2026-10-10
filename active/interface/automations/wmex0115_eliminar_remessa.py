@@ -989,7 +989,7 @@ def iniciar_automacao(
         status_callback = status_callback_fn
     clear_stop()
     register_stop_hotkey(log_fn=log_fn)
-    registrar_evento_execucao(
+    inicio_execucao = registrar_evento_execucao(
         "wmex0115_eliminar_remessa",
         "inicio",
         status="iniciado",
@@ -1021,7 +1021,7 @@ def iniciar_automacao(
                                     n_clicks=5, clicar=True, modo="auto", ignorar_textos=ignorar_textos,
                                     stop_checker=lambda: stop_requested)
         if not resultado:
-            registrar_evento_execucao("wmex0115_eliminar_remessa", "fim", status="erro", detalhe="Tela inicial não confirmada")
+            registrar_evento_execucao("wmex0115_eliminar_remessa", "fim", inicio=inicio_execucao, status="erro", detalhe="Tela inicial não confirmada")
             return log("[ERRO] Tela inicial nÃ£o confirmada.")
 
         # --- Determina fluxo --- #
@@ -1052,7 +1052,7 @@ def iniciar_automacao(
 
             # --- Pular etapas 1 e 2, iniciar da etapa 3 --- #
             if not digitar_transacao(transacao_eliminar):
-                registrar_evento_execucao("wmex0115_eliminar_remessa", "fim", status="erro", detalhe=f"Falha ao digitar transação {transacao_eliminar}")
+                registrar_evento_execucao("wmex0115_eliminar_remessa", "fim", inicio=inicio_execucao, status="erro", detalhe=f"Falha ao digitar transação {transacao_eliminar}")
                 return log_fn(f"[ERRO] Falha ao digitar transaÃ§Ã£o {transacao_eliminar}.")
             time.sleep(0.5)
 
@@ -1078,7 +1078,7 @@ def iniciar_automacao(
             plantas_list = quebrar_itens_multilinha(plantas) if plantas else [""]
             for p in plantas_list:
                 if not digitar_transacao(transacao_capturar):
-                    registrar_evento_execucao("wmex0115_eliminar_remessa", "fim", status="erro", detalhe=f"Falha ao digitar transação {transacao_capturar}")
+                    registrar_evento_execucao("wmex0115_eliminar_remessa", "fim", inicio=inicio_execucao, status="erro", detalhe=f"Falha ao digitar transação {transacao_capturar}")
                     return log_fn(f"[ERRO] Falha ao digitar transaÃ§Ã£o {transacao_capturar}.")
 
                 # Aguarda mudanca apos digitacao da transacao
@@ -1126,7 +1126,7 @@ def iniciar_automacao(
                                             n_clicks=5, clicar=True, modo="auto", ignorar_textos=ignorar_textos,
                                             stop_checker=lambda: stop_requested)
                 if not resultado:
-                    registrar_evento_execucao("wmex0115_eliminar_remessa", "fim", status="erro", detalhe="Tela inicial não confirmada após captura")
+                    registrar_evento_execucao("wmex0115_eliminar_remessa", "fim", inicio=inicio_execucao, status="erro", detalhe="Tela inicial não confirmada após captura")
                     return log_fn("[ERRO] Tela inicial nÃ£o confirmada.")
 
 
@@ -1141,11 +1141,11 @@ def iniciar_automacao(
                                             n_clicks=5, clicar=True, modo="auto", ignorar_textos=ignorar_textos,
                                             stop_checker=lambda: stop_requested)
                 if not resultado:
-                    registrar_evento_execucao("wmex0115_eliminar_remessa", "fim", status="erro", detalhe="Tela inicial não confirmada antes da eliminação")
+                    registrar_evento_execucao("wmex0115_eliminar_remessa", "fim", inicio=inicio_execucao, status="erro", detalhe="Tela inicial não confirmada antes da eliminação")
                     return log("[ERRO] Tela inicial nÃ£o confirmada.")
 
                 if not digitar_transacao(transacao_eliminar):
-                    registrar_evento_execucao("wmex0115_eliminar_remessa", "fim", status="erro", detalhe=f"Falha ao digitar transação {transacao_eliminar}")
+                    registrar_evento_execucao("wmex0115_eliminar_remessa", "fim", inicio=inicio_execucao, status="erro", detalhe=f"Falha ao digitar transação {transacao_eliminar}")
                     return log_fn(f"[ERRO] Falha ao digitar transaÃ§Ã£o {transacao_eliminar}.")
 
                 hash_ref, mudou = detectar_mudanca_tela(hash_ref, limiar=6, max_espera=3.5, log_fn=log_fn)
@@ -1159,12 +1159,13 @@ def iniciar_automacao(
                     status_cb=status_callback,
                 )
             else:
-                registrar_evento_execucao("wmex0115_eliminar_remessa", "fim", status="sem_dados", detalhe="Nenhuma remessa encontrada")
+                registrar_evento_execucao("wmex0115_eliminar_remessa", "fim", inicio=inicio_execucao, status="sem_dados", detalhe="Nenhuma remessa encontrada")
                 return log_fn("[INFO] Nenhuma remessa encontrada.")
 
         registrar_evento_execucao(
             "wmex0115_eliminar_remessa",
             "fim",
+            inicio=inicio_execucao,
             status="sucesso",
             linhas_processadas=len(resultados) if resultados else 0,
         )

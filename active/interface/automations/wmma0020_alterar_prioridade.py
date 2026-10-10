@@ -1155,7 +1155,7 @@ def iniciar_automacao(
 
     clear_stop()
 
-    registrar_evento_execucao(
+    inicio_execucao = registrar_evento_execucao(
         "wmma0020_alterar_prioridade",
         "inicio",
         status="iniciado",
@@ -1173,6 +1173,7 @@ def iniciar_automacao(
         registrar_evento_execucao(
             "wmma0020_alterar_prioridade",
             "fim",
+            inicio=inicio_execucao,
             status="erro",
             detalhe=str(exc),
         )
@@ -1207,6 +1208,7 @@ def iniciar_automacao(
         registrar_evento_execucao(
             "wmma0020_alterar_prioridade",
             "fim",
+            inicio=inicio_execucao,
             status="erro",
             detalhe="Tela inicial não confirmada",
         )
@@ -1220,6 +1222,7 @@ def iniciar_automacao(
             registrar_evento_execucao(
                 "wmma0020_alterar_prioridade",
                 "fim",
+                inicio=inicio_execucao,
                 status="erro",
                 detalhe=f"Falha ao digitar transação {TRANSACAO_MAPEAMENTO}",
             )
@@ -1265,6 +1268,7 @@ def iniciar_automacao(
     registrar_evento_execucao(
         "wmma0020_alterar_prioridade",
         "fim",
+        inicio=inicio_execucao,
         status="sucesso",
         linhas_processadas=len(resultados),
         alterados=total_alterados,
