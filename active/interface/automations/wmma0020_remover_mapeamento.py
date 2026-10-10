@@ -1,5 +1,6 @@
 import os
 import time
+import ctypes
 import pyautogui
 import pyperclip
 import keyboard as kb
@@ -10,12 +11,14 @@ import numpy as np
 
 from interface.automations.execution_log import registrar_evento_execucao
 from interface.automations.base_automation import (
+    CURSORINFO,
     aceitar_alt_o,
     acao_limpar,
     aguardar_textos,
     alt_f4,
     ativar_edicao,
     campo_anterior,
+    cancelar_consulta,
     colar_ctrl_v,
     copiar_ctrl_c,
     copiar_para_clipboard,
@@ -39,23 +42,23 @@ TRANSACAO_MAPEAMENTO = "wmma0020"
 
 MAX_RECUPERACOES_POR_LINHA = 3
 
-
 # =================== AJUSTE FINO DE TEMPOS =================== #
 
-INTERVALO_DIGITACAO = 0.15
+INTERVALO_DIGITACAO = 0.04
 PAUSA_APOS_DIGITAR = 0.15
-PAUSA_APOS_TAB = 0.15
+PAUSA_APOS_TAB = 0.10
 
 # Pausa após F7 (entrar em modo consulta) no bloco de classes.
-PAUSA_APOS_ENTER_QUERY = 0.35
+PAUSA_APOS_ATIVAR_CONSULTA = 0.30
 
 # Pausa após F8 (executar a consulta), antes de ler o resultado.
-PAUSA_APOS_EXECUTAR_CONSULTA = 0.40
+PAUSA_APOS_EXECUTAR_CONSULTA = 0.2
+PAUSA_APOS_SALVAR_CONSULTA = 1
 
 # Tempo máximo de busca pela mensagem na barra de status.
-TIMEOUT_BARRA_STATUS = 1.5
+TIMEOUT_BARRA_STATUS = 0.50
 
-PAUSA_APOS_REMOVER = 0.30
+PAUSA_APOS_LIMPAR_CAMPO = 0.2
 PAUSA_APOS_LIMPAR = 0.30
 PAUSA_ANTES_PROXIMO_BLOCO = 0.20
 
@@ -73,12 +76,15 @@ TITULOS_PROIBIDOS = (
     "edge",
     "bloco de notas",
     "notepad",
-    "teams",
 )
 
 logger = print
 status_callback = None
 stop_requested = False
+
+ABORTAR_AUTOMACAO_POR_LEITURAS_VAZIAS = "__ABORTAR_AUTOMACAO_POR_LEITURAS_VAZIAS__"
+IDC_APPSTARTING = 32650  # seta + loading
+IDC_WAIT = 32514         # loading/ampulheta
 
 
 # =================== EXCEÇÕES DE CONTROLE =================== #
@@ -92,9 +98,17 @@ class FocoPerdidoError(Exception):
     """A janela do WMS não pôde ser focada; digitar seria inseguro."""
     pass
 
+class NaoRetornouRegistroError(Exception):
+    """A consulta não retornou registros."""
 
-class AbortarRemocao(Exception):
-    """Interrompe toda a remoção (ex.: tela não encontrada ou parada)."""
+    def __init__(self, motivo, resultado_parcial=None):
+        super().__init__(motivo)
+        self.motivo = motivo
+        self.resultado_parcial = resultado_parcial
+
+
+class AbortarAlteracao(Exception):
+    """Interrompe toda a alteração (ex.: tela não encontrada ou parada)."""
 
     def __init__(self, motivo, resultado_parcial=None):
         super().__init__(motivo)
@@ -104,6 +118,16 @@ class AbortarRemocao(Exception):
 
 # =================== UTILITÁRIOS =================== #
 
+def cursor_carregando():
+    ci = CURSORINFO()
+    ci.cbSize = ctypes.sizeof(CURSORINFO)
+
+    ctypes.windll.user32.GetCursorInfo(ctypes.byref(ci))
+
+    h_wait = ctypes.windll.user32.LoadCursorW(0, IDC_WAIT)
+    h_appstarting = ctypes.windll.user32.LoadCursorW(0, IDC_APPSTARTING)
+
+    return ci.hCursor in (h_wait, h_appstarting)
 def request_stop():
     global stop_requested
     stop_requested = True
@@ -125,7 +149,8 @@ def verificar_tamanho_lista(dados, planta=None, *, tamanho_esperado):
     """
     Valida se as linhas coladas possuem a quantidade mínima de colunas.
 
-    Para a remoção são esperadas 3 colunas: planta, item e classe.
+    Para a remoção de mapeamento são esperadas 3 colunas:
+    planta, item e classe.
     """
     if dados:
         return len(dados[0]) >= tamanho_esperado
@@ -256,6 +281,12 @@ def proximo_campo_wms():
     time.sleep(PAUSA_APOS_TAB)
 
 
+def limpar_campo_wms():
+    """Ctrl+U - limpa o conteúdo do campo sob o cursor."""
+    atalho_wms(limpar_campo)
+    time.sleep(PAUSA_APOS_LIMPAR_CAMPO)
+
+
 def limpar_shift_f4():
     """
     SHIFT+F4 - limpa os valores digitados no bloco de consulta.
@@ -284,7 +315,7 @@ def capturar_hash_tela():
 
 def detectar_mudanca_tela(
     hash_ref=None,
-    limiar=5,
+    limiar=3,
     max_espera=3.5,
     intervalo=0.1,
     confirmacoes=1,
@@ -335,11 +366,8 @@ def detectar_pesquisa_sem_registro(timeout=None):
     opcoes = {
         "sem_registro": [
             "a pesquisa não retornou registro algum",
-            "a pesquisa nao retornou registro algum",
             "não retornou registro algum",
-            "nao retornou registro algum",
             "não retornou registro",
-            "nao retornou registro",
         ]
     }
 
@@ -366,21 +394,22 @@ def detectar_pesquisa_sem_registro(timeout=None):
 def aguardar_transacao_completada(timeout=4.0):
     """
     Confirma "Transação Completada." na barra de status após salvar
-    a remoção.
+    a alteração.
     """
-    opcoes_sucesso = {
+    opcoes_transacao_completada = {
         "transacao_completada": [
-            "transação completada",
             "transacao completada",
+            "transacao",
+            "completada",
         ]
     }
 
     resultado = aguardar_textos(
         TRANSACAO_MAPEAMENTO,
-        opcoes_sucesso,
+        opcoes_transacao_completada,
         timeout=timeout,
         log_fn=log,
-        ordem_blocos=[21, 22],
+        ordem_blocos=[21],
         deslocamento_x=0.0,
         n_clicks=0,
         clicar=False,
@@ -450,18 +479,18 @@ def _renavegar_ate_mapeamento(log_fn=None):
     acao_limpar()
     time.sleep(0.3)
 
-    detectar_mudanca_tela(max_espera=0.1, log_fn=lambda *_: None)
+    detectar_mudanca_tela(limiar=3, max_espera=0.1, log_fn=lambda *_: None)
 
     resultado = aguardar_textos(
         TRANSACAO_MAPEAMENTO,
-        {"programa": ["Programa:"]},
+        {"programa": ["Programa:","programa"]},
         timeout=25,
         log_fn=log_fn,
         ordem_blocos=[1],
         deslocamento_x=0.8,
         n_clicks=5,
         clicar=True,
-        modo="auto",
+        modo="neutro",
         ignorar_textos=["programas"],
         stop_checker=lambda: stop_requested,
     )
@@ -481,7 +510,7 @@ def _renavegar_ate_mapeamento(log_fn=None):
         return False
 
     time.sleep(0.5)
-    detectar_mudanca_tela(limiar=6, max_espera=3.5, log_fn=log_fn)
+    detectar_mudanca_tela(limiar=3, max_espera=3.5, log_fn=log_fn)
 
     log_fn(
         f"{time.strftime('[%H:%M:%S]')} "
@@ -526,74 +555,71 @@ def recuperar_wms(timeout_wms=300, log_fn=None):
 # =================== PROCESSAMENTO DE UMA LINHA =================== #
 
 def _processar_linha(i, planta, item, classe, status_cb):
-    """
-    Remove UM mapeamento (item + planta + classe).
 
-    Fluxo no bloco de classes:
-        Ctrl+PgDn -> F7 -> planta -> TAB -> classe -> F8
-            encontrou  -> Shift+F6 -> F10 -> próximo item
-            não achou  -> Shift+F4 -> F8  -> próximo item
-
-    Retorna:
-        dict com a chave 'status'.
-    """
-    log(f"[REMOCAO] Linha {i}: item {item} | planta {planta} | {classe}")
-
-    if stop_requested:
-        raise AbortarRemocao("parada_solicitada")
-
-    try:
-        if callable(status_cb):
-            status_cb(i, "Em progresso", item)
-    except Exception as erro:
-        log(f"[WARN] Falha ao atualizar status da linha {i}: {erro}")
-
-    if detectar_erro_wms_caido(timeout=0.5):
-        raise WMSCaiuError()
-
-    garantir_foco_wms()
-
-    # --- Aguarda a tela de item --- #
-    resultado_status = aguardar_textos(
-        TRANSACAO_MAPEAMENTO,
-        {"encontrou": ["herdar mapeamento", "sobrescrever"]},
-        timeout=60,
-        log_fn=log,
-        ordem_blocos=[7, 12, 8, 13],
-        deslocamento_x=0.0,
-        n_clicks=1,
-        clicar=False,
-        modo="auto",
-        ignorar_textos=[],
-        roi_attempts=2,
-        roi_delay=0.2,
-        roi_retry_between_blocks=True,
-        stop_checker=lambda: stop_requested,
+    log(
+        f"[PRIORIDADE] Linha {i}: item {item} | planta {planta} | "
+        f"{classe}"
     )
 
-    texto_status, alvo, (cx, cy) = (
-        resultado_status
-        if resultado_status
-        else (None, None, (None, None))
-    )
 
-    if alvo not in ("herdar mapeamento", "sobrescrever"):
-        if detectar_erro_wms_caido(timeout=1.0):
-            raise WMSCaiuError()
+    # Etapa 1.1: localizar tela de pesquisa
+    now = time.strftime("[%H:%M:%S]")
+    print(f'{time.strftime("[%H:%M:%S]")}')
 
-        log(
-            f"{time.strftime('[%H:%M:%S]')} "
-            f"[INFO] Tela {TRANSACAO_MAPEAMENTO} não encontrada. "
-            "Abortando remoção..."
-        )
+    flag_tela_mapeamento = False
+    timer = time.time()
 
+    while True:
+        if stop_requested:
+            raise AbortarAlteracao("parada_solicitada")
+        
+        try:
+            if callable(status_cb):
+                status_cb(i, "Em progresso", item)
+        except Exception as erro:
+            log(f"[WARN] Falha ao atualizar status da linha {i}: {erro}")
+
+        #if detectar_erro_wms_caido(timeout=0.5):
+        #   raise WMSCaiuError()
+
+        garantir_foco_wms()
+
+        ignorar_textos = ["completar"]
+        opcoes_textos_status = {"encontrou_herdar_map": ["herdar mapeamento"]}
+        resultado = aguardar_textos(TRANSACAO_MAPEAMENTO, opcoes_textos_status, timeout=1, 
+                                    log_fn=log, ordem_blocos=[7, 12], deslocamento_x=0.0, 
+                                    n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=True, ignorar_textos=ignorar_textos)
+
+        print(f"herdar map.: {resultado}")
+
+        if resultado is None and time.time() - timer <= 10:
+            continue
+
+        elif any(texto in opcoes_textos_status["encontrou_herdar_map"] for texto in resultado):
+            flag_tela_mapeamento = True
+            break
+
+        elif not any(texto in opcoes_textos_status["encontrou_herdar_map"] for texto in resultado):
+            log("[WARN] Transação não encontrada. Tentando novamente...")
+            flag_tela_mapeamento = False
+            time.sleep(0.5)
+            continue
+
+        elif not any(texto in opcoes_textos_status["encontrou_herdar_map"] for texto in resultado) and time.time() - timer > 10:
+            flag_tela_mapeamento = False
+            log(f"{time.strftime('[%H:%M:%S]')} "
+                f"[ERRO] Tela de pesquisa não encontrada após várias tentativas. "
+                "Abortando alteração...")
+            break
+
+    if flag_tela_mapeamento is False:
         if callable(status_cb):
             try:
                 status_cb(i, "Transacao_nao_encontrada", item)
             except Exception:
                 pass
 
-        raise AbortarRemocao(
+        raise AbortarAlteracao(
             "Transacao_nao_encontrada",
             {
                 "linha": i,
@@ -604,204 +630,350 @@ def _processar_linha(i, planta, item, classe, status_cb):
             },
         )
 
-    # --- Pesquisa o item no bloco de cima --- #
+    print(f"{time.strftime('[%H:%M:%S]')} finalizou procura por HERDAR MAPEAMENTO / SOBRESCREVER")
+
+
+    # --- Pesquisa item --- #
+
+
+    time.sleep(0.2)
     atalho_wms(ativar_edicao)
+    atalho_wms(ativar_edicao)
+    time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
+    limpar_campo_wms()
+    time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
     escrever_wms(str(item))
 
     hash_ref, _ = detectar_mudanca_tela(
+        limiar=3,
         max_espera=0.1,
         log_fn=lambda *_: None,
     )
 
-    atalho_wms(executar_campo)
 
-    contador = 0
-    inicio_pesquisa = time.time()
-    item_encontrado = True
+    atalho_wms(executar_campo)
+    time.sleep(PAUSA_APOS_EXECUTAR_CONSULTA)
+
+
+    while cursor_carregando():
+        if stop_requested:
+            log("[ABORT] Parada solicitada antes da pesquisa.")
+            return resultado_parcial
+        print("Aguardando...")
+        time.sleep(0.1)
+        
+    flag_item_encontrado = False
+    contador_press_f8 = 0
+    timer = time.time()
 
     while True:
         if stop_requested:
-            raise AbortarRemocao("parada_solicitada")
+            raise AbortarAlteracao("parada_solicitada")
+        
+        try:
+            if callable(status_cb):
+                status_cb(i, "Em progresso", item)
+        except Exception as erro:
+            log(f"[WARN] Falha ao atualizar status da linha {i}: {erro}")
 
-        resultado = aguardar_textos(
-            TRANSACAO_MAPEAMENTO,
+        #if detectar_erro_wms_caido(timeout=0.5):
+        #   raise WMSCaiuError()
+
+        garantir_foco_wms()
+
+        ignorar_textos = ["list of values"]
+        opcoes_textos_status1 = {"encontrou_pesquisa_nao_retornou": ["pesquisa não", "não retornou", "retornou registro", "press f8", 
+                                                                     "press", "f8", "press F8 to execute", "f8 to execute"]}
+        resultado = aguardar_textos(TRANSACAO_MAPEAMENTO, opcoes_textos_status1, timeout=0.1, 
+                                    log_fn=log, ordem_blocos=[21], deslocamento_x=0.0, 
+                                    n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=False, ignorar_textos=ignorar_textos)
+
+        print(f"record.: {resultado}")
+
+        if resultado is None:
+            contador_press_f8 += 1
+            if contador_press_f8 >= 1:
+                flag_item_encontrado = "sim"
+                log("[INFO] 'Enter a query' ausente em 1 verificação. Item considerado encontrado.")
+                break
+
+
+            if time.time() - timer > 10:
+                flag_item_encontrado = "nao_retornou"
+                log(f"{time.strftime('[%H:%M:%S]')} "
+                    f"[ERRO] Item não encontrado após várias tentativas. "
+                    "Abortando alteração..."
+                )
+                break
+
+            continue
+
+        elif any(texto in opcoes_textos_status1["encontrou_pesquisa_nao_retornou"] for texto in resultado):
+            log(f"{time.strftime('[%H:%M:%S]')} "
+                f"[ERRO] Item não retornou registro. "
+                "Abortando alteração..."
+            )
+            flag_item_encontrado = "nao_retornou"
+            break
+
+
+        else:
+            break
+
+    if flag_item_encontrado == "nao_retornou":
+        atalho_wms(cancelar_consulta)
+
+        if callable(status_cb):
+            try:
+                status_cb(i, "Item_nao_retornou", item)
+            except Exception:
+                pass
+
+        raise NaoRetornouRegistroError(
+            "Item_nao_retornou",
             {
-                "mensagem_enter_query": [
-                    "enterquery",
-                    "enter-query",
-                    "enter",
-                    "query",
-                ]
+                "linha": i,
+                "planta": planta,
+                "item": item,
+                "classe": classe,
+                "status": "Item não retornou registro algum",
             },
-            timeout=0.1,
+        )
+
+    elif flag_item_encontrado == "nao_retornou":
+        if callable(status_cb):
+            try:
+                status_cb(i, "Item não encontrado", item)
+            except Exception:
+                pass
+
+        raise AbortarAlteracao(
+            "Item_nao_encontrado",
+            {
+                "linha": i,
+                "planta": planta,
+                "item": item,
+                "classe": classe,
+                "status": "Item não encontrado",
+            },
+        )
+
+
+    # --- Pesquisa planta e classe --- #
+
+
+    # Ctrl+PgDn -> desce para "Classes de Locais associadas".
+
+    atalho_wms(proximo_bloco)
+    time.sleep(PAUSA_APOS_TAB)
+
+    # F7 -> entra em modo consulta (Enter-Query).
+    atalho_wms(ativar_edicao)
+    time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
+
+
+    timer_enter_query = time.time()
+    opcoes_enter_query = {
+        "mensagem_enter_query": [
+            "enter a query",
+            "enter query",
+            "enterquery",
+            "enter",
+            "query",
+        ]
+    }
+    while True:
+        if stop_requested:
+            raise AbortarAlteracao("parada_solicitada")
+
+        garantir_foco_wms()
+        resultado_enter_query = aguardar_textos(
+            TRANSACAO_MAPEAMENTO,
+            opcoes_enter_query,
+            timeout=0.5,
             log_fn=log,
             ordem_blocos=[21],
             deslocamento_x=0.0,
             n_clicks=0,
             clicar=False,
             modo="neutro",
-            ignorar_textos=["record 11", "record", "11"],
+            roi_retry_between_blocks=True,
             stop_checker=lambda: stop_requested,
         )
-
-        hash_ref, mudou = detectar_mudanca_tela(
-            hash_ref,
-            limiar=7,
-            max_espera=0.35,
-            intervalo=0.15,
-            confirmacoes=2,
-            log_fn=log,
-        )
-
-        tempo_pesquisa = time.time() - inicio_pesquisa
-
-        if resultado:
-            contador = 0
-            time.sleep(0.3)
-            continue
-
-        if mudou:
-            atalho_wms(aceitar_alt_o)
-            time.sleep(0.3)
-            contador += 1
-            continue
-
-        if not resultado and contador > 1:
+        if resultado_enter_query:
             break
 
-        if tempo_pesquisa > 10:
-            if detectar_erro_wms_caido(timeout=0.5):
-                raise WMSCaiuError()
-
+        elif time.time() - timer_enter_query > 10:
             log(
                 f"{time.strftime('[%H:%M:%S]')} "
-                "[WARN] Item não encontrado. Pulando..."
+                "[WARN] Mensagem 'enter a query' não apareceu em 10 segundos. "
+                "Pulando para o próximo item."
             )
+            cancelar_consulta()
 
             if callable(status_cb):
                 try:
-                    status_cb(i, "Item_nao_encontrado", item)
+                    status_cb(i, "Inexistente", item)
                 except Exception:
                     pass
 
-            item_encontrado = False
-            break
-
-        contador += 1
-
-    if not item_encontrado:
-        return {
-            "linha": i,
-            "planta": planta,
-            "item": item,
-            "classe": classe,
-            "status": "Item_nao_encontrado",
-        }
-
-    # ================================================================
-    # BLOCO DE CLASSES: consulta pela combinação exata planta + classe
-    # ================================================================
-
-    # Ctrl+PgDn -> desce para "Classes de Locais associadas".
-    atalho_wms(proximo_bloco)
-    time.sleep(PAUSA_APOS_TAB)
-
-    # F7 -> entra em modo consulta (Enter-Query).
-    atalho_wms(ativar_edicao)
-    time.sleep(PAUSA_APOS_ENTER_QUERY)
+            return {
+                "linha": i,
+                "planta": planta,
+                "item": item,
+                "classe": classe,
+                "status": "Mapeamento_inexistente",
+            }
 
     # Preenche os critérios da consulta.
+    limpar_campo_wms()
+    time.sleep(PAUSA_APOS_LIMPAR_CAMPO)
     escrever_wms(str(planta))
     proximo_campo_wms()
+    time.sleep(0.2)
+    limpar_campo_wms()
+    time.sleep(PAUSA_APOS_LIMPAR_CAMPO)
     escrever_wms(str(classe))
 
     # F8 -> executa a consulta.
     atalho_wms(executar_campo)
     time.sleep(PAUSA_APOS_EXECUTAR_CONSULTA)
 
+    while cursor_carregando():
+        if stop_requested:
+            log("[ABORT] Parada solicitada antes da pesquisa.")
+            return resultado_parcial
+        print("Aguardando...")
+        time.sleep(0.1)
+
     # O WMS pode ter caído durante a consulta.
-    if detectar_erro_wms_caido(timeout=0.5):
-        raise WMSCaiuError()
+    #if detectar_erro_wms_caido(timeout=0.5):
+    #    raise WMSCaiuError()
 
-    # --- Caso 1: combinação não existe --- #
-    if detectar_pesquisa_sem_registro():
-        log(
-            f"{time.strftime('[%H:%M:%S]')} "
-            f"[INFO] Mapeamento {planta}/{classe} não existe "
-            f"para o item {item}. Nada a remover."
-        )
 
-        # Shift+F4 -> limpa os valores digitados na consulta.
-        limpar_shift_f4()
+    # --- Verificar se o texto "enter a query" sumiu para prosseguir --- #
 
-        # F8 -> devolve a tela ao estado normal.
-        atalho_wms(executar_campo)
-        time.sleep(PAUSA_APOS_EXECUTAR_CONSULTA)
 
-        if callable(status_cb):
-            try:
-                status_cb(i, "Mapeamento_inexistente", item)
-            except Exception:
-                pass
+    flag_mapeamento_encontrado = "nao"
+    contador_enter_query = 0
+    contador_sem_mensagem = 0
 
-        # Ctrl+PgDn -> volta ao bloco de itens para o próximo item.
-        time.sleep(PAUSA_ANTES_PROXIMO_BLOCO)
-        atalho_wms(proximo_bloco)
-
-        return {
-            "linha": i,
-            "planta": planta,
-            "item": item,
-            "classe": classe,
-            "status": "Mapeamento_inexistente",
-        }
-
-    # --- Caso 2: registro encontrado -> remover --- #
-    # Shift+F6 -> apaga o registro localizado.
-    atalho_wms(remover_registro)
-    time.sleep(PAUSA_APOS_REMOVER)
-
-    # F10 -> salva a remoção.
-    atalho_wms(salvar_registro)
-
-    if aguardar_transacao_completada(timeout=4.0):
-        if callable(status_cb):
-            try:
-                status_cb(i, "Concluído", item)
-            except Exception:
-                pass
-
-        log(
-            f"{time.strftime('[%H:%M:%S]')} "
-            f"[SUCESSO] Mapeamento {planta}/{classe} removido "
-            f"do item {item}."
-        )
-
-        time.sleep(PAUSA_ANTES_PROXIMO_BLOCO)
-        atalho_wms(proximo_bloco)
-
-        return {
-            "linha": i,
-            "planta": planta,
-            "item": item,
-            "classe": classe,
-            "status": "Removido",
-        }
-
-    if detectar_erro_wms_caido(timeout=0.8):
-        raise WMSCaiuError()
-
-    if callable(status_cb):
+    while True:
+        if stop_requested:
+            raise AbortarAlteracao("parada_solicitada")
+        
         try:
-            status_cb(i, "Nao_confirmado", item)
-        except Exception:
-            pass
+            if callable(status_cb):
+                status_cb(i, "Em progresso", item)
+        except Exception as erro:
+            log(f"[WARN] Falha ao atualizar status da linha {i}: {erro}")
 
-    log(
-        f"{time.strftime('[%H:%M:%S]')} "
-        f"[WARN] Item {item}: remoção não confirmada. "
-        "Verifique manualmente."
-    )
+        #if detectar_erro_wms_caido(timeout=0.5):
+        #   raise WMSCaiuError()
+
+        garantir_foco_wms()
+
+        time.sleep(0.5)
+
+        ignorar_textos = ["list of values"]
+        opcoes_textos_status2 = {"encontrou_pesquisa_nao_retornou": ["pesquisa não", "não retornou", "retornou registro", "press f8", 
+                                                                     "press", "f8", "press F8 to execute", "f8 to execute"]}
+        resultado_texto_status2 = aguardar_textos(TRANSACAO_MAPEAMENTO, opcoes_textos_status2, timeout=0.1, 
+                                    log_fn=log, ordem_blocos=[21], deslocamento_x=0.0, 
+                                    n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=False, ignorar_textos=ignorar_textos)
+        print(f"resultado_texto_status2: {resultado_texto_status2}")
+
+        if resultado_texto_status2 is None:
+            flag_mapeamento_encontrado = "sim"
+            log("[INFO] 'Enter a query' ausente. Mapeamento encontrado.")
+            break
+        else:
+            flag_mapeamento_encontrado = "nao_retornou"
+            log(
+                f"{time.strftime('[%H:%M:%S]')} "
+                f"[WARN] Pesquisa do mapeamento não retornou resultado "
+                f"(texto reconhecido: {resultado_texto_status2[1]})."
+            )
+            break
+
+    if flag_mapeamento_encontrado != "sim":
+        atalho_wms(cancelar_consulta)
+        atalho_wms(proximo_bloco)
+
+        status_mapeamento = "Mapeamento_inexistente"
+        descricao_status = "Mapeamento não retornou"
+        log(
+            f"{time.strftime('[%H:%M:%S]')} "
+            f"[WARN] {descricao_status}. Pulando para o próximo item."
+        )
+
+        if callable(status_cb):
+            try:
+                status_cb(i, "Inexistente", item)
+            except Exception:
+                pass
+
+        time.sleep(PAUSA_ANTES_PROXIMO_BLOCO)
+
+        return {
+            "linha": i,
+            "planta": planta,
+            "item": item,
+            "classe": classe,
+            "status": status_mapeamento,
+        }
+
+    # --- Registro encontrado - Remover mapeamento --- #
+
+    if flag_mapeamento_encontrado == "sim":
+
+        # Shift+F6 -> apaga o registro localizado.
+        atalho_wms(remover_registro)
+        time.sleep(0.2)
+
+        # F10 -> salva a remoção.
+        atalho_wms(salvar_registro)
+
+        time.sleep(PAUSA_APOS_SALVAR_CONSULTA)
+
+        if aguardar_transacao_completada(timeout=4.0):
+            if callable(status_cb):
+                try:
+                    status_cb(i, "Alterado", item)
+                except Exception:
+                    pass
+
+            log(
+                f"{time.strftime('[%H:%M:%S]')} "
+                f"[SUCESSO] Remoção do mapeamento {planta}/{classe} "
+                f"do item {item} concluída."
+            )
+
+            time.sleep(PAUSA_ANTES_PROXIMO_BLOCO)
+            atalho_wms(proximo_bloco)
+
+            return {
+                "linha": i,
+                "planta": planta,
+                "item": item,
+                "classe": classe,
+                "status": "Alterado",
+            }
+
+        #if detectar_erro_wms_caido(timeout=0.8):
+        #    raise WMSCaiuError()
+
+        if callable(status_cb):
+            try:
+                status_cb(i, "Nao_confirmado", item)
+            except Exception:
+                pass
+
+        log(
+            f"{time.strftime('[%H:%M:%S]')} "
+            f"[WARN] Item {item}: remoção não confirmada. "
+            "Verifique manualmente."
+        )
 
     time.sleep(PAUSA_ANTES_PROXIMO_BLOCO)
     atalho_wms(proximo_bloco)
@@ -811,14 +983,14 @@ def _processar_linha(i, planta, item, classe, status_cb):
         "planta": planta,
         "item": item,
         "classe": classe,
-        "status": "Remocao_nao_confirmada",
+        "status": "Mapeamento_inexistente",
     }
 
 
 # =================== LOOP PRINCIPAL =================== #
 
-def iniciar_remocao_itens(data, status_cb=None):
-    log(f"[INFO] Iniciando remoção com {len(data)} linhas.")
+def iniciar_alteracao_itens(data, status_cb=None):
+    log(f"[INFO] Iniciando remoção de mapeamento com {len(data)} linhas.")
 
     if status_cb is None:
         status_cb = status_callback
@@ -837,7 +1009,13 @@ def iniciar_remocao_itens(data, status_cb=None):
         planta, item, classe = data[idx][:3]
 
         try:
-            resultado = _processar_linha(i, planta, item, classe, status_cb)
+            resultado = _processar_linha(
+                i,
+                planta,
+                item,
+                classe,
+                status_cb,
+            )
             resultados.append(resultado)
             idx += 1
 
@@ -907,16 +1085,32 @@ def iniciar_remocao_itens(data, status_cb=None):
             idx += 1
             continue
 
-        except AbortarRemocao as ab:
+        except AbortarAlteracao as ab:
             if ab.resultado_parcial:
                 resultados.append(ab.resultado_parcial)
 
             log(
                 f"{time.strftime('[%H:%M:%S]')} "
-                f"[ABORT] Remoção interrompida: {ab.motivo}."
+                f"[ABORT] Alteração interrompida: {ab.motivo}."
             )
             break
 
+        except NaoRetornouRegistroError as nrr:
+            if nrr.resultado_parcial:
+                resultados.append(nrr.resultado_parcial)
+
+            log(
+                f"{time.strftime('[%H:%M:%S]')} "
+                f"[WARN] Linha {i}: {nrr.motivo}."
+            )
+            idx += 1
+            continue
+
+        except Exception as exc:
+
+            return resultados
+
+    alt_f4()
     return resultados
 
 
@@ -947,7 +1141,7 @@ def iniciar_automacao(
 
     resultados = []
 
-    log_fn("[INFO] Iniciando automação de remoção...")
+    log_fn("[INFO] Iniciando automação de remoção de mapeamento...")
 
     try:
         garantir_foco_wms(log_fn=log_fn)
@@ -965,21 +1159,22 @@ def iniciar_automacao(
     acao_limpar()
     time.sleep(0.3)
 
-    hash_ref, _ = detectar_mudanca_tela(
+    hash_ref, _ = detectar_mudanca_tela(limiar=3,
         max_espera=0.1,
         log_fn=lambda *_: None,
     )
 
     resultado = aguardar_textos(
         TRANSACAO_MAPEAMENTO,
-        {"programa": ["Programa:"]},
+        {"programa": ["Programa:","programa"]},
         timeout=25,
         log_fn=log,
         ordem_blocos=[1],
         deslocamento_x=0.8,
-        n_clicks=5,
+        n_clicks=1,
         clicar=True,
-        modo="auto",
+        modo="neutro",
+        roi_retry_between_blocks=True,
         ignorar_textos=["programas"],
         stop_checker=lambda: stop_requested,
     )
@@ -1011,7 +1206,7 @@ def iniciar_automacao(
 
         hash_ref, mudou = detectar_mudanca_tela(
             hash_ref,
-            limiar=6,
+            limiar=3,
             max_espera=3.5,
             log_fn=log_fn,
         )
@@ -1019,13 +1214,13 @@ def iniciar_automacao(
         if not mudou:
             log_fn("[WARN] Nenhuma mudança visual detectada após digitação.")
 
-        resultados = iniciar_remocao_itens(data, status_cb=status_callback)
+        resultados = iniciar_alteracao_itens(data, status_cb=status_callback)
 
     else:
         log_fn("[INFO] Nenhum dado fornecido. Encerrando...")
 
-    total_removidos = sum(
-        1 for r in resultados if r.get("status") == "Removido"
+    total_alterados = sum(
+        1 for r in resultados if r.get("status") == "Alterado"
     )
     total_inexistentes = sum(
         1 for r in resultados if r.get("status") == "Mapeamento_inexistente"
@@ -1034,7 +1229,7 @@ def iniciar_automacao(
         1 for r in resultados if r.get("status") == "Item_nao_encontrado"
     )
     total_nao_confirmados = sum(
-        1 for r in resultados if r.get("status") == "Remocao_nao_confirmada"
+        1 for r in resultados if r.get("status") == "Alteracao_nao_confirmada"
     )
     total_falha_wms = sum(
         1 for r in resultados if r.get("status") == "Falha_wms"
@@ -1048,17 +1243,17 @@ def iniciar_automacao(
         "fim",
         status="sucesso",
         linhas_processadas=len(resultados),
-        removidos=total_removidos,
+        alterados=total_alterados,
         mapeamentos_inexistentes=total_inexistentes,
         itens_nao_encontrados=total_nao_encontrados,
-        remocoes_nao_confirmadas=total_nao_confirmados,
+        alteracoes_nao_confirmadas=total_nao_confirmados,
         falhas_wms=total_falha_wms,
         focos_perdidos=total_foco_perdido,
     )
 
     log_fn(
-        "[INFO] Automação de remoção finalizada. "
-        f"Removidos: {total_removidos}. "
+        "[INFO] Automação de remoção de mapeamento finalizada. "
+        f"Alterados: {total_alterados}. "
         f"Inexistentes: {total_inexistentes}. "
         f"Não encontrados: {total_nao_encontrados}. "
         f"Não confirmados: {total_nao_confirmados}. "
