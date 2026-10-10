@@ -644,8 +644,11 @@ def _processar_linha(i, planta, item, classe, restricao, status_cb):
 
     time.sleep(0.2)
     atalho_wms(ativar_edicao)
+    time.sleep(0.05)
     atalho_wms(ativar_edicao)
     time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
+    limpar_campo_wms()
+    time.sleep(0.05)
     limpar_campo_wms()
     time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
     escrever_wms(str(item))
