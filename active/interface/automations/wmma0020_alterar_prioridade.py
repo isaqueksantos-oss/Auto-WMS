@@ -657,57 +657,7 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
         log_fn=lambda *_: None,
     )
 
-    timer_enter_query = time.time()
-    mensagem_enter_query = {"mensagem_enter_query": ["enterquery", "enter query", "enter", "query"]
-    }
-    while True:
-        if stop_requested:
-            raise AbortarAlteracao("parada_solicitada")
 
-        garantir_foco_wms()
-        resultado_enter_query = aguardar_textos(
-            TRANSACAO_MAPEAMENTO,
-            mensagem_enter_query,
-            timeout=0.5,
-            log_fn=log,
-            ordem_blocos=[21],
-            deslocamento_x=0.0,
-            n_clicks=0,
-            clicar=False,
-            modo="neutro",
-            roi_retry_between_blocks=True,
-            stop_checker=lambda: stop_requested,
-        )
-        if resultado_enter_query:
-            break
-
-        elif time.time() - timer_enter_query > 10:
-            motivo = "WMS_nao_pronto_para_consulta"
-            log(
-                f"{time.strftime('[%H:%M:%S]')} "
-                "[ERRO] Mensagem 'enter query' não encontrada após 10 segundos. "
-                "Abortando alteração..."
-            )
-
-
-            if callable(status_cb):
-                try:
-                    status_cb(i, motivo, item)
-                except Exception:
-                    pass
-
-            raise AbortarAlteracao(
-                motivo,
-                {
-                    "linha": i,
-                    "planta": planta,
-                    "item": item,
-                    "classe": classe,
-                    "prioridade": prioridade,
-                    "status": motivo,
-                },
-            )
-    
     atalho_wms(executar_campo)
     time.sleep(PAUSA_APOS_EXECUTAR_CONSULTA)
 
@@ -856,7 +806,7 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
             n_clicks=0,
             clicar=False,
             modo="neutro",
-            roi_retry_between_blocks=False,
+            roi_retry_between_blocks=True,
             stop_checker=lambda: stop_requested,
         )
         if resultado_enter_query:
