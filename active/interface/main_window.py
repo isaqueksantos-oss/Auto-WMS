@@ -1854,8 +1854,7 @@ class MainWindow:
                 time.sleep(0.3)
                 pyautogui.press("tab")
                 time.sleep(0.2)
-                pyperclip.copy(senha)
-                pyautogui.hotkey("ctrl", "v")
+                pyautogui.write(senha, interval=0.05)
                 time.sleep(0.3)
                 pyautogui.press("enter")
                 self.log_app("[OK] Credenciais enviadas ao SAP.")
@@ -3224,10 +3223,9 @@ class MainWindow:
         pyautogui.press("tab")
         time.sleep(0.3)
 
-        copiar_para_clipboard(senha)
         focus_manager(["wms americanas - login"])
         time.sleep(0.3)
-        pyautogui.hotkey("ctrl", "v")
+        pyautogui.write(senha, interval=0.05)
         time.sleep(0.3)
 
         pyautogui.press("enter")

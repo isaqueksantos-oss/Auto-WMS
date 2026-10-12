@@ -16,7 +16,7 @@ registry = ElementRegistry()
 
 CONFIANCA_PADRAO = 0.7
 EXIBIR_VISUALMENTE = False
-
+CF_TEXT = 1
 
 class CURSORINFO(ctypes.Structure):
     _fields_ = [
@@ -62,7 +62,6 @@ def focus_manager(palavras_chave=None):
             return w
 
     return None
-
 
 def maximize_manager(palavras_chave=None):
     """
@@ -121,6 +120,7 @@ def ativar_edicao():
 def acao_limpar():
     pyautogui.hotkey('alt', 'a', 'l')
     time.sleep(0.05)
+    
 def campo_limpar():
     pyautogui.hotkey('alt', 'c', 'l')
     time.sleep(0.05)
@@ -172,7 +172,6 @@ def campo_anterior():
     pyautogui.hotkey('shift', 'tab')
     time.sleep(0.05)
 
-
 def salvar_registro():
     pyautogui.press('f10')
     time.sleep(0.05)
@@ -181,7 +180,6 @@ def proximo_bloco():
     pyautogui.hotkey('ctrl', 'pgdn')
     time.sleep(0.05)
 
-
 def copiar_para_clipboard(texto):
     for _ in range(3):
         pyperclip.copy(texto)
@@ -189,31 +187,30 @@ def copiar_para_clipboard(texto):
             return True
     return False
 
+def limpar_clipboard():
+    ctypes.windll.user32.OpenClipboard(0)
+    ctypes.windll.user32.EmptyClipboard()
+    ctypes.windll.user32.CloseClipboard()
 
 def colar_ctrl_v():
     pyautogui.hotkey('ctrl', 'v')
     time.sleep(0.05)
 
-
 def copiar_ctrl_c():
     pyautogui.hotkey('ctrl', 'c')
     time.sleep(0.05)
-
 
 def alt_f4():
     pyautogui.hotkey('alt', 'f4')
     time.sleep(0.1)
 
-
 def inicio_do_campo():
     pyautogui.hotkey('ctrl', 'left')
     time.sleep(0.05)
 
-
 def selecionar_texto_esq_dir():
     pyautogui.hotkey('ctrl', 'shiftright', 'shiftleft', 'right')
     time.sleep(0.05)
-
 
 def digitar_transacao(transacao):
     acao_limpar()
@@ -230,7 +227,6 @@ def digitar_transacao(transacao):
     pyautogui.press('enter')
     print(f"{time.strftime('[%H:%M:%S]')} [OK] Transacao digitada e Enter pressionado.")
     return True
-
 
 def aguardar_textos(
     transacao,
