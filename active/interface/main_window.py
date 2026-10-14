@@ -3173,7 +3173,7 @@ class MainWindow:
         print("[INFO] Confirmando ADVERTÊNCIA DE SEGURANÇA...")
         time.sleep(0.5)
 
-        opcoes_textos = {"advert": ["risco", "aceito", "eu aceito","nao mostrar novamente"]}
+        opcoes_textos = {"advert": ["aceito", "eu aceito", "desejo executar","nao mostrar novamente"]}
 
         resultado = aguardar_textos(
             "WMMS",
