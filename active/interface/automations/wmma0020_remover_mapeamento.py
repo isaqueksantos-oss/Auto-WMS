@@ -17,6 +17,9 @@ from interface.automations.base_automation import (
     aguardar_textos,
     alt_f4,
     ativar_edicao,
+    botao_ok,
+    botao_yes,
+    botao_no,
     campo_anterior,
     cancelar_consulta,
     colar_ctrl_v,
@@ -27,6 +30,7 @@ from interface.automations.base_automation import (
     inicio_do_campo,
     inserir_registro,
     limpar_campo,
+    limpar_shift_f7,
     proximo_campo,
     proximo_bloco,
     remover_registro,
@@ -391,22 +395,78 @@ def detectar_pesquisa_sem_registro(timeout=None):
     return bool(resultado)
 
 
-def aguardar_transacao_completada(timeout=4.0):
+def aguardar_transacao_completada(timeout=3.0):
     """
     Confirma "Transação Completada." na barra de status após salvar
     a alteração.
     """
-    opcoes_transacao_completada = {
-        "transacao_completada": [
-            "transacao completada",
-            "transacao",
-            "completada",
-        ]
+    opcoes_transacao_finalizada = {
+        "transacao_completada": ["transacao completada"],
+        "impossivel_desfazer": ["impossivel desfazer"],
     }
 
     resultado = aguardar_textos(
         TRANSACAO_MAPEAMENTO,
-        opcoes_transacao_completada,
+        opcoes_transacao_finalizada,
+        timeout=timeout,
+        log_fn=log,
+        ordem_blocos=[21, 7, 13, 8],
+        deslocamento_x=0.0,
+        n_clicks=0,
+        clicar=False,
+        modo="neutro",
+        ignorar_textos=[],
+        roi_attempts=2,
+        roi_delay=0.1,
+        roi_retry_between_blocks=True,
+        stop_checker=lambda: stop_requested,
+    )
+
+    if resultado is None:
+        log(
+            f"{time.strftime('[%H:%M:%S]')} "
+            "[WARN] 'Transação Completada.' não confirmada no tempo limite."
+        )
+        return "nao_confirmada"
+
+    texto_reconhecido = resultado[1]
+
+    if texto_reconhecido in opcoes_transacao_finalizada["transacao_completada"]:
+        log(
+            f"{time.strftime('[%H:%M:%S]')} "
+            "[SUCESSO] Mensagem 'Transação Completada.' confirmada."
+        )
+        return "transacao_completada"
+
+    elif texto_reconhecido in opcoes_transacao_finalizada["impossivel_desfazer"]:
+        log(
+            f"{time.strftime('[%H:%M:%S]')} "
+            "[ERRO] WMS informou que não é possível desfazer a associação. "
+            "Abortando remoção..."
+        )
+        atalho_wms(botao_ok)
+        time.sleep(0.5)
+        atalho_wms(limpar_shift_f7)
+        time.sleep(0.5)
+        atalho_wms(botao_no)
+        time.sleep(0.5)
+
+        return "impossivel_desfazer"
+
+    log(
+        f"{time.strftime('[%H:%M:%S]')} "
+        "[WARN] 'Transação Completada.' não confirmada no tempo limite."
+    )
+
+    return "nao_confirmada"
+
+def aguardar_impossivel_desfazer(timeout=3.0):
+
+    opcoes_impossivel_desfazer = {"impossivel_desfazer" : ["impossivel desfazer", "impossivel", "desfazer"]}
+
+    resultado = aguardar_textos(
+        TRANSACAO_MAPEAMENTO,
+        opcoes_impossivel_desfazer,
         timeout=timeout,
         log_fn=log,
         ordem_blocos=[21],
@@ -593,25 +653,20 @@ def _processar_linha(i, planta, item, classe, status_cb):
 
         print(f"herdar map.: {resultado}")
 
-        if resultado is None and time.time() - timer <= 10:
-            continue
-
-        elif any(texto in opcoes_textos_status["encontrou_herdar_map"] for texto in resultado) or any(texto in opcoes_textos_status["encontrou_tipo_picking"] for texto in resultado):
+        if resultado is not None:
             flag_tela_mapeamento = True
             break
 
-        elif not any(texto in opcoes_textos_status["encontrou_herdar_map"] for texto in resultado) or not any(texto in opcoes_textos_status["encontrou_tipo_picking"] for texto in resultado):
-            log("[WARN] Transação não encontrada. Tentando novamente...")
-            flag_tela_mapeamento = False
-            time.sleep(0.5)
-            continue
-
-        elif time.time() - timer > 10 and not any(texto in opcoes_textos_status["encontrou_herdar_map"] for texto in resultado) or not any(texto in opcoes_textos_status["encontrou_tipo_picking"] for texto in resultado):
+        if time.time() - timer > 10:
             flag_tela_mapeamento = False
             log(f"{time.strftime('[%H:%M:%S]')} "
                 f"[ERRO] Tela de pesquisa não encontrada após várias tentativas. "
                 "Abortando alteração...")
             break
+
+        log("[WARN] Transação não encontrada. Tentando novamente...")
+        flag_tela_mapeamento = False
+        time.sleep(0.5)
 
     if flag_tela_mapeamento is False:
         if callable(status_cb):
@@ -940,13 +995,16 @@ def _processar_linha(i, planta, item, classe, status_cb):
 
         time.sleep(PAUSA_APOS_SALVAR_CONSULTA)
 
-        if aguardar_transacao_completada(timeout=4.0):
-            if callable(status_cb):
-                try:
-                    status_cb(i, "Alterado", item)
-                except Exception:
-                    pass
+        resultado_transacao_completada = aguardar_transacao_completada(timeout=4.0)
 
+        if callable(status_cb):
+            try:
+                status_cb(i, "Alterado", item)
+            except Exception:
+                pass
+
+        if resultado_transacao_completada == "transacao_completada":
+    
             log(
                 f"{time.strftime('[%H:%M:%S]')} "
                 f"[SUCESSO] Remoção do mapeamento {planta}/{classe} "
@@ -963,6 +1021,22 @@ def _processar_linha(i, planta, item, classe, status_cb):
                 "classe": classe,
                 "status": "Alterado",
             }
+
+        elif resultado_transacao_completada == "impossivel_desfazer":
+            log(
+                f"{time.strftime('[%H:%M:%S]')} "
+                f"[WARN] Remoção do apeamento {planta}/{classe} "
+                f"do item {item} apresentou o erro: 'Impossível desfazer assossiação'."
+            )
+
+            return {
+                "linha": i,
+                "planta": planta,
+                "item": item,
+                "classe": classe,
+                "status": "impossivel_desfazer",
+            }
+
 
         #if detectar_erro_wms_caido(timeout=0.8):
         #    raise WMSCaiuError()
@@ -1244,6 +1318,9 @@ def iniciar_automacao(
     total_foco_perdido = sum(
         1 for r in resultados if r.get("status") == "Foco_perdido"
     )
+    total_impossivel_desfazer = sum(
+        1 for r in resultados if r.get("status") == "impossivel_desfazer"
+    )
 
     registrar_evento_execucao(
         "wmma0020_remover_mapeamento",
@@ -1266,7 +1343,8 @@ def iniciar_automacao(
         f"Não encontrados: {total_nao_encontrados}. "
         f"Não confirmados: {total_nao_confirmados}. "
         f"Falhas WMS: {total_falha_wms}. "
-        f"Foco perdido: {total_foco_perdido}."
+        f"Foco perdido: {total_falha_wms}. "
+        f"Impossível desfazer: {total_impossivel_desfazer}."
     )
 
     return resultados
