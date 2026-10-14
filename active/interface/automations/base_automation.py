@@ -180,6 +180,19 @@ def proximo_bloco():
     pyautogui.hotkey('ctrl', 'pgdn')
     time.sleep(0.05)
 
+def botao_ok():
+    pyautogui.hotkey('alt', 'o')
+    time.sleep(0.05)
+
+def botao_yes():
+    pyautogui.hotkey('alt', 'y')
+    time.sleep(0.05)
+
+def botao_no():
+    pyautogui.hotkey('alt', 'n')
+    time.sleep(0.05)
+
+
 def copiar_para_clipboard(texto):
     for _ in range(3):
         pyperclip.copy(texto)
