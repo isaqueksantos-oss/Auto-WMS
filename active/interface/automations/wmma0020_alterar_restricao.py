@@ -596,27 +596,22 @@ def _processar_linha(i, planta, item, classe, restricao, status_cb):
                                     log_fn=log, ordem_blocos=[7, 12], deslocamento_x=0.0, 
                                     n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=True, ignorar_textos=ignorar_textos)
 
-        print(f"herdar map.: {resultado}")
+        print(f"Alterar restrição: {resultado}")
 
-        if resultado is None and time.time() - timer <= 10:
-            continue
-
-        elif any(texto in opcoes_textos_status["encontrou_herdar_map"] for texto in resultado):
+        if resultado is not None:
             flag_tela_mapeamento = True
             break
 
-        elif not any(texto in opcoes_textos_status["encontrou_herdar_map"] for texto in resultado):
-            log("[WARN] Transação não encontrada. Tentando novamente...")
-            flag_tela_mapeamento = False
-            time.sleep(0.5)
-            continue
-
-        elif not any(texto in opcoes_textos_status["encontrou_herdar_map"] for texto in resultado) and time.time() - timer > 10:
+        if time.time() - timer > 10:
             flag_tela_mapeamento = False
             log(f"{time.strftime('[%H:%M:%S]')} "
                 f"[ERRO] Tela de pesquisa não encontrada após várias tentativas. "
                 "Abortando alteração...")
             break
+
+        log("[WARN] Transação não encontrada. Tentando novamente...")
+        flag_tela_mapeamento = False
+        time.sleep(0.5)
 
     if flag_tela_mapeamento is False:
         if callable(status_cb):
