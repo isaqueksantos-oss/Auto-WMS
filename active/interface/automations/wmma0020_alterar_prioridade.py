@@ -58,7 +58,7 @@ PAUSA_APOS_TAB = 0.10
 PAUSA_APOS_ATIVAR_CONSULTA = 0.30
 
 # Pausa após F8 (executar a consulta), antes de ler o resultado.
-PAUSA_APOS_EXECUTAR_CONSULTA = 0.2
+PAUSA_APOS_EXECUTAR_CONSULTA = 0.5
 PAUSA_APOS_SALVAR_CONSULTA = 1
 
 # Tempo máximo de busca pela mensagem na barra de status.
@@ -638,16 +638,100 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
     # --- Pesquisa item --- #
 
 
-    time.sleep(0.2)
-    atalho_wms(ativar_edicao)
-    time.sleep(0.05)
-    atalho_wms(ativar_edicao)
-    time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
-    limpar_campo_wms()
-    time.sleep(0.05)
-    limpar_campo_wms()
-    time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
-    escrever_wms(str(item))
+
+
+
+
+
+
+
+
+
+
+
+
+
+    timer_press_f8 = time.time()
+
+    while True:
+        if stop_requested:
+            raise AbortarAlteracao("parada_solicitada")
+        time.sleep(0.2)
+        atalho_wms(ativar_edicao)
+        time.sleep(0.05)
+        atalho_wms(ativar_edicao)
+        time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
+
+        garantir_foco_wms()
+
+        ignorar_textos = ["list of values", 'enter query']
+        opcoes_textos_status0 = {"encontrou_press_f8": ["press", "f8", "press F8 to", "press F8 to execute", "f8 to execute"]}
+        resultado_press_f8 = aguardar_textos(TRANSACAO_MAPEAMENTO, opcoes_textos_status0, timeout=0.1, 
+                                    log_fn=log, ordem_blocos=[21], deslocamento_x=0.0, 
+                                    n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=False, ignorar_textos=ignorar_textos)
+
+
+        if resultado_press_f8:
+            limpar_campo_wms()
+            time.sleep(0.05)
+            limpar_campo_wms()
+            time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
+            escrever_wms(str(item))
+            break
+
+        if time.time() - timer_press_f8 > 10:
+            motivo = "WMS_nao_pronto_para_consulta"
+            log(
+                f"{time.strftime('[%H:%M:%S]')} "
+                "[ERRO] Mensagem 'enter query' não encontrada após 10 segundos. "
+                "Abortando alteração..."
+            )
+
+
+            if callable(status_cb):
+                try:
+                    status_cb(i, motivo, item)
+                except Exception:
+                    pass
+
+            raise AbortarAlteracao(
+                motivo,
+                {
+                    "linha": i,
+                    "planta": planta,
+                    "item": item,
+                    "classe": classe,
+                    "prioridade": prioridade,
+                    "status": motivo,
+                },
+            )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     hash_ref, _ = detectar_mudanca_tela(
         limiar=3,
@@ -659,13 +743,12 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
     atalho_wms(executar_campo)
     time.sleep(PAUSA_APOS_EXECUTAR_CONSULTA)
 
-
     while cursor_carregando():
         if stop_requested:
-            log("[ABORT] Parada solicitada antes da pesquisa.")
+            log("[ABORT] Parada solicitada após a pesquisa.")
             return resultado_parcial
         print("Aguardando...")
-        time.sleep(0.1)
+        time.sleep(0.5)
         
     flag_item_encontrado = False
     contador_press_f8 = 0
@@ -846,13 +929,13 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
     # F8 -> executa a consulta.
     atalho_wms(executar_campo)
     time.sleep(PAUSA_APOS_EXECUTAR_CONSULTA)
-
+    
     while cursor_carregando():
         if stop_requested:
-            log("[ABORT] Parada solicitada antes da pesquisa.")
+            log("[ABORT] Parada solicitada após a pesquisa.")
             return resultado_parcial
         print("Aguardando...")
-        time.sleep(0.1)
+        time.sleep(0.5)
 
     # O WMS pode ter caído durante a consulta.
     #if detectar_erro_wms_caido(timeout=0.5):
@@ -1225,6 +1308,13 @@ def iniciar_automacao(
             return []
 
         time.sleep(0.5)
+
+        while cursor_carregando():
+            if stop_requested:
+                log("[ABORT] Parada solicitada após a pesquisa.")
+                return resultado_parcial
+            print("Aguardando...")
+            time.sleep(0.5)
 
         hash_ref, mudou = detectar_mudanca_tela(
             hash_ref,
