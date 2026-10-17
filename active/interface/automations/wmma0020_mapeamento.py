@@ -53,7 +53,7 @@ PAUSA_APOS_TAB = 0.10
 PAUSA_APOS_ATIVAR_CONSULTA = 0.30
 
 # Pausa após F8 (executar a consulta), antes de ler o resultado.
-PAUSA_APOS_EXECUTAR_CONSULTA = 0.5
+PAUSA_APOS_EXECUTAR_CONSULTA = 0.7
 PAUSA_APOS_SALVAR_CONSULTA = 1
 
 # Tempo máximo de busca pela mensagem na barra de status.
@@ -750,12 +750,6 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
                                     n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=False, ignorar_textos=ignorar_textos)
 
         if resultado_press_f8:
-            limpar_campo_wms()
-            time.sleep(0.05)
-            limpar_campo_wms()
-            time.sleep(0.1)
-            time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
-            escrever_wms(str(item))
             break
 
         if time.time() - timer_press_f8 > 10:
@@ -801,16 +795,8 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
         log_fn=lambda *_: None,
     )
 
-    atalho_wms(executar_campo)
-    time.sleep(PAUSA_APOS_EXECUTAR_CONSULTA)
 
-    while cursor_carregando():
-        if stop_requested:
-            log("[ABORT] Parada solicitada antes da pesquisa.")
-            raise AbortarAlteracao("parada_solicitada")
-        print("Aguardando...")
-        time.sleep(0.5)
-        
+
     flag_item_encontrado = False
 
     while True:
@@ -822,6 +808,26 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
                 status_cb(i, "Em progresso", item)
         except Exception as erro:
             log(f"[WARN] Falha ao atualizar status da linha {i}: {erro}")
+
+
+        atalho_wms(ativar_edicao)
+        time.sleep(0.1)
+        atalho_wms(ativar_edicao)
+        time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
+        limpar_campo_wms()
+        time.sleep(0.1)
+        limpar_campo_wms()
+        time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
+        escrever_wms(str(item))
+        atalho_wms(executar_campo)
+        time.sleep(PAUSA_APOS_EXECUTAR_CONSULTA)
+
+        while cursor_carregando():
+            if stop_requested:
+                log("[ABORT] Parada solicitada antes da pesquisa.")
+                raise AbortarAlteracao("parada_solicitada")
+            print("Aguardando...")
+            time.sleep(0.5)
 
         #if detectar_erro_wms_caido(timeout=0.5):
         #   raise WMSCaiuError()
