@@ -97,6 +97,8 @@ PAUSA_APOS_LIMPAR = 0.30
 PAUSA_APOS_REMOVER = 0.30
 PAUSA_ANTES_PROXIMO_BLOCO = 0.20
 
+# Tempo máximo esperando a mensagem "não retornou registro" após o F8.
+TIMEOUT_RESULTADO_PESQUISA = 2.5
 
 TITULOS_WMS = (
     "wms americanas",
@@ -893,7 +895,6 @@ def recuperar_wms(timeout_wms=300, log_fn=None):
 
 
 # =================== PESQUISA DO ITEM (BLOCO DE CIMA) =================== #
-
 def pesquisar_item(item):
     """
     Pesquisa o item no bloco superior da tela (F7 -> item -> F8).
@@ -901,6 +902,12 @@ def pesquisar_item(item):
     Usada pelas macros de descativação e alteração de ponto mínimo.
     A cativação NÃO usa esta função: lá o fluxo é Ctrl+V + TAB
     (ver colar_item_e_descer).
+
+    Diferente da wmma0020, aqui NÃO se usa Alt+O: nesta tela o atalho
+    abre o menu "Consulta" e trava a macro. Após o F8 só há dois
+    resultados possíveis:
+        - a barra de status informa "não retornou registro algum";
+        - o item é carregado na tela.
 
     Retorna:
         True  -> item localizado.
@@ -910,6 +917,9 @@ def pesquisar_item(item):
     Lança:
         WMSCaiuError / AbortarExecucao.
     """
+    if stop_requested:
+        raise AbortarExecucao("parada_solicitada")
+
     atalho_wms(ativar_edicao)
     time.sleep(PAUSA_APOS_ENTER_QUERY)
 
@@ -920,11 +930,6 @@ def pesquisar_item(item):
 
     colar_wms(str(item))
 
-    hash_ref, _ = detectar_mudanca_tela(
-        max_espera=0.1,
-        log_fn=lambda *_: None,
-    )
-
     atalho_wms(executar_campo)
     time.sleep(PAUSA_APOS_EXECUTAR_CONSULTA)
 
@@ -932,8 +937,8 @@ def pesquisar_item(item):
     if detectar_erro_wms_caido(timeout=0.5):
         raise WMSCaiuError()
 
-    # Item inexistente: a barra de status informa imediatamente.
-    if detectar_pesquisa_sem_registro():
+    # Item inexistente: a barra de status informa logo após o F8.
+    if detectar_pesquisa_sem_registro(timeout=TIMEOUT_RESULTADO_PESQUISA):
         log(
             f"{time.strftime('[%H:%M:%S]')} "
             f"[INFO] Item {item} não retornou registro algum."
@@ -942,85 +947,13 @@ def pesquisar_item(item):
         # Shift+F4 -> limpa a consulta, deixando a tela pronta para o
         # próximo item.
         limpar_shift_f4()
-
         return False
 
-    contador = 0
-    inicio_pesquisa = time.time()
-
-    while True:
-        if stop_requested:
-            raise AbortarExecucao("parada_solicitada")
-
-        resultado = aguardar_textos(
-            TRANSACAO,
-            {
-                "mensagem_enter_query": [
-                    "enterquery",
-                    "enter-query",
-                    "enter",
-                    "query",
-                ]
-            },
-            timeout=0.1,
-            log_fn=log,
-            ordem_blocos=[21],
-            deslocamento_x=0.0,
-            n_clicks=0,
-            clicar=False,
-            modo="neutro",
-            ignorar_textos=["record 11", "record", "11"],
-            stop_checker=lambda: stop_requested,
-        )
-
-        hash_ref, mudou = detectar_mudanca_tela(
-            hash_ref,
-            limiar=7,
-            max_espera=0.35,
-            intervalo=0.15,
-            confirmacoes=2,
-            log_fn=log,
-        )
-
-        tempo_pesquisa = time.time() - inicio_pesquisa
-
-        if resultado:
-            # Ainda em Enter-Query: pode ser item inexistente.
-            if detectar_pesquisa_sem_registro(timeout=0.5):
-                log(
-                    f"{time.strftime('[%H:%M:%S]')} "
-                    f"[INFO] Item {item} não retornou registro algum."
-                )
-                limpar_shift_f4()
-                return False
-
-            contador = 0
-            time.sleep(0.3)
-            continue
-
-        if mudou:
-            atalho_wms(aceitar_alt_o)
-            time.sleep(0.3)
-            contador += 1
-            continue
-
-        if not resultado and contador > 1:
-            return True
-
-        if tempo_pesquisa > 10:
-            if detectar_erro_wms_caido(timeout=0.5):
-                raise WMSCaiuError()
-
-            log(
-                f"{time.strftime('[%H:%M:%S]')} "
-                f"[WARN] Item {item} não encontrado após múltiplas "
-                "tentativas."
-            )
-
-            limpar_shift_f4()
-            return False
-
-        contador += 1
+    log(
+        f"{time.strftime('[%H:%M:%S]')} "
+        f"[INFO] Item {item} localizado."
+    )
+    return True
 
 
 def aguardar_tela_transacao(timeout=60):
