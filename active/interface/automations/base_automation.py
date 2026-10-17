@@ -17,6 +17,8 @@ registry = ElementRegistry()
 CONFIANCA_PADRAO = 0.7
 EXIBIR_VISUALMENTE = False
 CF_TEXT = 1
+IDC_APPSTARTING = 32650  # seta + loading
+IDC_WAIT = 32514         # loading/ampulheta
 
 class CURSORINFO(ctypes.Structure):
     _fields_ = [
@@ -232,6 +234,7 @@ def digitar_transacao(transacao):
     time.sleep(0.2)
     limpar_shift_f7()
     time.sleep(0.3)
+    limpar_shift_f7()
     
     """Digita a transacao e pressiona Enter."""
     print(f"{time.strftime('[%H:%M:%S]')} [INFO] Digitando transacao '{transacao}'...")
@@ -240,6 +243,24 @@ def digitar_transacao(transacao):
     pyautogui.press('enter')
     print(f"{time.strftime('[%H:%M:%S]')} [OK] Transacao digitada e Enter pressionado.")
     return True
+
+def cursor_carregando():
+    h_wait = ctypes.windll.user32.LoadCursorW(0, IDC_WAIT)
+    h_appstarting = ctypes.windll.user32.LoadCursorW(0, IDC_APPSTARTING)
+
+    for tentativa in range(3):
+        ci = CURSORINFO()
+        ci.cbSize = ctypes.sizeof(CURSORINFO)
+
+        ctypes.windll.user32.GetCursorInfo(ctypes.byref(ci))
+
+        if ci.hCursor in (h_wait, h_appstarting):
+            return True
+
+        if tentativa < 2:
+            time.sleep(0.3)
+
+    return False
 
 def aguardar_textos(
     transacao,

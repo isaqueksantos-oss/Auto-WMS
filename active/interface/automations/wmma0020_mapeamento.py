@@ -27,12 +27,14 @@ from interface.automations.base_automation import (
     inicio_do_campo,
     inserir_registro,
     limpar_campo,
+    limpar_shift_f7,
     proximo_campo,
     proximo_bloco,
     remover_registro,
     salvar_alt_s,
     salvar_registro,
     selecionar_texto_esq_dir,
+    cursor_carregando,
 )
 
 
@@ -132,16 +134,6 @@ class AbortarAlteracao(Exception):
 
 # =================== UTILITÁRIOS =================== #
 
-def cursor_carregando():
-    ci = CURSORINFO()
-    ci.cbSize = ctypes.sizeof(CURSORINFO)
-
-    ctypes.windll.user32.GetCursorInfo(ctypes.byref(ci))
-
-    h_wait = ctypes.windll.user32.LoadCursorW(0, IDC_WAIT)
-    h_appstarting = ctypes.windll.user32.LoadCursorW(0, IDC_APPSTARTING)
-
-    return ci.hCursor in (h_wait, h_appstarting)
 
 def request_stop():
     global stop_requested
@@ -860,6 +852,8 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
     if flag_item_encontrado == "nao_retornou":
         flag_item_encontrado = False
         atalho_wms(cancelar_consulta)
+        time.sleep(0.2)
+        limpar_shift_f7()
 
         if callable(status_cb):
             try:
@@ -898,9 +892,19 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
 
     # Preenche os dados do novo mapeamento.
     atalho_wms(proximo_bloco)
-    time.sleep(0.2)
+    time.sleep(0.5)
+
+    while cursor_carregando():
+        if stop_requested:
+            log("[ABORT] Parada solicitada antes da pesquisa.")
+            raise AbortarAlteracao("parada_solicitada")
+        print("Aguardando...")
+        time.sleep(0.5)
+        
     atalho_wms(inserir_registro)
-    time.sleep(0.2)
+    time.sleep(0.1)
+    atalho_wms(inserir_registro)
+    time.sleep(0.1)
 
     limpar_campo_wms()
     time.sleep(PAUSA_APOS_LIMPAR_CAMPO)
@@ -993,7 +997,7 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
         )
 
         time.sleep(PAUSA_ANTES_PROXIMO_BLOCO)
-        atalho_wms(proximo_bloco)
+        atalho_wms(limpar_shift_f7)
 
         return {
             "linha": i,
@@ -1217,6 +1221,7 @@ def iniciar_automacao(
     acao_limpar()
     time.sleep(0.3)
 
+
     hash_ref, _ = detectar_mudanca_tela(limiar=3,
         max_espera=0.1,
         log_fn=lambda *_: None,
@@ -1249,6 +1254,7 @@ def iniciar_automacao(
         return []
 
     if data and len(data) > 0:
+        limpar_shift_f7()
         log(f"[INFO] Dados fornecidos ({len(data)} linhas).")
 
         if not digitar_transacao(TRANSACAO_MAPEAMENTO):

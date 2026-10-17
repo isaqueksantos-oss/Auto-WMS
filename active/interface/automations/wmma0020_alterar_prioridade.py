@@ -34,6 +34,7 @@ from interface.automations.base_automation import (
     salvar_alt_s,
     salvar_registro,
     selecionar_texto_esq_dir,
+    cursor_carregando,
 )
 
 
@@ -125,16 +126,6 @@ class AbortarAlteracao(Exception):
 
 # =================== UTILITÁRIOS =================== #
 
-def cursor_carregando():
-    ci = CURSORINFO()
-    ci.cbSize = ctypes.sizeof(CURSORINFO)
-
-    ctypes.windll.user32.GetCursorInfo(ctypes.byref(ci))
-
-    h_wait = ctypes.windll.user32.LoadCursorW(0, IDC_WAIT)
-    h_appstarting = ctypes.windll.user32.LoadCursorW(0, IDC_APPSTARTING)
-
-    return ci.hCursor in (h_wait, h_appstarting)
 def request_stop():
     global stop_requested
     stop_requested = True
@@ -1257,7 +1248,7 @@ def iniciar_automacao(
 
     if data and len(data) > 0:
         log(f"[INFO] Dados fornecidos ({len(data)} linhas).")
-
+        limpar_shift_f7()
         if not digitar_transacao(TRANSACAO_MAPEAMENTO):
             registrar_evento_execucao(
                 "wmma0020_alterar_prioridade",
