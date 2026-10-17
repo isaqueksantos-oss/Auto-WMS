@@ -741,7 +741,13 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
         atalho_wms(ativar_edicao)
         time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
 
-        garantir_foco_wms()
+        while cursor_carregando():
+            if stop_requested:
+                log("[ABORT] Parada solicitada antes da pesquisa.")
+                raise AbortarAlteracao("parada_solicitada")
+            print("Aguardando...")
+            time.sleep(0.5)
+
 
         ignorar_textos = ["list of values", "enter query"]
         opcoes_textos_status0 = {"encontrou_press_f8": ["press", "f8", "press f8", "press F8 to", "press F8 to execute", "f8 to execute"]}
@@ -785,7 +791,18 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
 
 
 
+    limpar_campo_wms()
+    time.sleep(0.1)
+    escrever_wms(str(item))
+    atalho_wms(executar_campo)
+    time.sleep(0.5)
 
+    while cursor_carregando():
+        if stop_requested:
+            log("[ABORT] Parada solicitada antes da pesquisa.")
+            raise AbortarAlteracao("parada_solicitada")
+        print("Aguardando...")
+        time.sleep(0.5)
 
 
 
@@ -808,26 +825,6 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
                 status_cb(i, "Em progresso", item)
         except Exception as erro:
             log(f"[WARN] Falha ao atualizar status da linha {i}: {erro}")
-
-
-        atalho_wms(ativar_edicao)
-        time.sleep(0.1)
-        atalho_wms(ativar_edicao)
-        time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
-        limpar_campo_wms()
-        time.sleep(0.1)
-        limpar_campo_wms()
-        time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
-        escrever_wms(str(item))
-        atalho_wms(executar_campo)
-        time.sleep(PAUSA_APOS_EXECUTAR_CONSULTA)
-
-        while cursor_carregando():
-            if stop_requested:
-                log("[ABORT] Parada solicitada antes da pesquisa.")
-                raise AbortarAlteracao("parada_solicitada")
-            print("Aguardando...")
-            time.sleep(0.5)
 
         #if detectar_erro_wms_caido(timeout=0.5):
         #   raise WMSCaiuError()
@@ -884,6 +881,20 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
                 "status": "Item não retornou registro algum",
             },
         )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     # Preenche os dados do novo mapeamento.
     atalho_wms(proximo_bloco)
