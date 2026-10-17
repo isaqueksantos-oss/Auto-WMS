@@ -625,13 +625,15 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
     print(f"{time.strftime('[%H:%M:%S]')} finalizou procura por HERDAR MAPEAMENTO / SOBRESCREVER")
 
 
+
+
+
+
+
+
+
+
     # --- Pesquisa item --- #
-
-
-
-
-
-
 
 
 
@@ -651,7 +653,13 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
         atalho_wms(ativar_edicao)
         time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
 
-        garantir_foco_wms()
+        while cursor_carregando():
+            if stop_requested:
+                log("[ABORT] Parada solicitada antes da pesquisa.")
+                raise AbortarAlteracao("parada_solicitada")
+            print("Aguardando...")
+            time.sleep(0.5)
+
 
         ignorar_textos = ["list of values", "enter query"]
         opcoes_textos_status0 = {"encontrou_press_f8": ["press", "f8", "press f8", "press F8 to", "press F8 to execute", "f8 to execute"]}
@@ -660,11 +668,6 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
                                     n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=False, ignorar_textos=ignorar_textos)
 
         if resultado_press_f8:
-            limpar_campo_wms()
-            time.sleep(0.1)
-            limpar_campo_wms()
-            time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
-            escrever_wms(str(item))
             break
 
         if time.time() - timer_press_f8 > 10:
@@ -694,6 +697,11 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
             )
 
 
+    hash_ref, _ = detectar_mudanca_tela(
+        limiar=3,
+        max_espera=0.1,
+        log_fn=lambda *_: None,
+    )
 
 
 
@@ -711,12 +719,18 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
 
 
 
+    limpar_campo_wms()
+    time.sleep(0.1)
+    escrever_wms(str(item))
+    atalho_wms(executar_campo)
+    time.sleep(0.5)
 
-
-
-
-
-
+    while cursor_carregando():
+        if stop_requested:
+            log("[ABORT] Parada solicitada antes da pesquisa.")
+            raise AbortarAlteracao("parada_solicitada")
+        print("Aguardando...")
+        time.sleep(0.5)
 
 
 
@@ -726,16 +740,8 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
         log_fn=lambda *_: None,
     )
 
-    atalho_wms(executar_campo)
-    time.sleep(PAUSA_APOS_EXECUTAR_CONSULTA)
 
-    while cursor_carregando():
-        if stop_requested:
-            log("[ABORT] Parada solicitada após a pesquisa.")
-            raise AbortarAlteracao("parada_solicitada")
-        print("Aguardando...")
-        time.sleep(0.5)
-        
+
     flag_item_encontrado = False
 
     while True:
@@ -782,6 +788,8 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
     if flag_item_encontrado == "nao_retornou":
         flag_item_encontrado = False
         atalho_wms(cancelar_consulta)
+        time.sleep(0.2)
+        limpar_shift_f7()
 
         if callable(status_cb):
             try:
@@ -800,6 +808,20 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
                 "status": "Item não retornou registro algum",
             },
         )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     # --- Pesquisa planta e classe --- #

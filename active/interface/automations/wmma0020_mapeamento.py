@@ -509,6 +509,7 @@ def tratar_aviso_registro_duplicado(
 
     atalho_wms(remover_registro)
     time.sleep(PAUSA_APOS_REMOVER)
+    atalho_wms(limpar_shift_f7)
 
     log(
         f"{time.strftime('[%H:%M:%S]')} "
