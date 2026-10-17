@@ -27,6 +27,7 @@ from interface.automations.base_automation import (
     inicio_do_campo,
     inserir_registro,
     limpar_campo,
+    limpar_shift_f7,
     proximo_campo,
     proximo_bloco,
     remover_registro,
@@ -564,9 +565,7 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
 
     log(
         f"[PRIORIDADE] Linha {i}: item {item} | planta {planta} | "
-        f"{classe} -> prioridade {prioridade}"
-    )
-
+        f"{classe} -> prioridade {prioridade}")
 
     # Etapa 1.1: localizar tela de pesquisa
     now = time.strftime("[%H:%M:%S]")
@@ -650,7 +649,6 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
 
 
 
-
     timer_press_f8 = time.time()
 
     while True:
@@ -670,7 +668,6 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
                                     log_fn=log, ordem_blocos=[21], deslocamento_x=0.0, 
                                     n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=False, ignorar_textos=ignorar_textos)
 
-
         if resultado_press_f8:
             limpar_campo_wms()
             time.sleep(0.1)
@@ -686,7 +683,6 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
                 "[ERRO] Mensagem 'enter query' não encontrada após 10 segundos. "
                 "Abortando alteração..."
             )
-
 
             if callable(status_cb):
                 try:
@@ -738,7 +734,6 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
         max_espera=0.1,
         log_fn=lambda *_: None,
     )
-
 
     atalho_wms(executar_campo)
     time.sleep(PAUSA_APOS_EXECUTAR_CONSULTA)
@@ -794,6 +789,7 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
             break
 
     if flag_item_encontrado == "nao_retornou":
+        flag_item_encontrado = False
         atalho_wms(cancelar_consulta)
 
         if callable(status_cb):

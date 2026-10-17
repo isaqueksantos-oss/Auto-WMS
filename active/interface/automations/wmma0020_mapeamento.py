@@ -50,22 +50,22 @@ PAUSA_APOS_DIGITAR = 0.15
 PAUSA_APOS_TAB = 0.10
 
 # Pausa após F7 (entrar em modo consulta) no bloco de classes.
-PAUSA_APOS_ATIVAR_CONSULTA = 0.50
+PAUSA_APOS_ATIVAR_CONSULTA = 0.30
 
 # Pausa após F8 (executar a consulta), antes de ler o resultado.
-PAUSA_APOS_EXECUTAR_CONSULTA = 0.2
+PAUSA_APOS_EXECUTAR_CONSULTA = 0.5
 PAUSA_APOS_SALVAR_CONSULTA = 1
 
 # Tempo máximo de busca pela mensagem na barra de status.
 TIMEOUT_BARRA_STATUS = 0.50
 
 PAUSA_APOS_LIMPAR_CAMPO = 0.2
-PAUSA_APOS_LIMPAR = 0.20
+PAUSA_APOS_LIMPAR = 0.30
 PAUSA_ANTES_PROXIMO_BLOCO = 0.20
 
 # --- Verificação de duplicidade (mais rápida) --- #
 # Tempo máximo de busca pelo popup de duplicidade.
-TIMEOUT_DUPLICIDADE = 0.05
+TIMEOUT_DUPLICIDADE = 0.3
 
 # Pausa entre detectar o popup e pressionar Enter.
 DELAY_CONFIRMACAO_DUPLICIDADE = 0.20
@@ -142,6 +142,7 @@ def cursor_carregando():
     h_appstarting = ctypes.windll.user32.LoadCursorW(0, IDC_APPSTARTING)
 
     return ci.hCursor in (h_wait, h_appstarting)
+
 def request_stop():
     global stop_requested
     stop_requested = True
@@ -694,7 +695,6 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
         flag_tela_mapeamento = False
         time.sleep(0.5)
 
-
     if flag_tela_mapeamento is False:
         if callable(status_cb):
             try:
@@ -723,6 +723,13 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
     # --- Pesquisa item --- #
 
 
+
+
+
+
+
+
+
     timer_press_f8 = time.time()
 
     while True:
@@ -738,14 +745,15 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
 
         ignorar_textos = ["list of values", "enter query"]
         opcoes_textos_status0 = {"encontrou_press_f8": ["press", "f8", "press f8", "press F8 to", "press F8 to execute", "f8 to execute"]}
-        resultado_press_f8 = aguardar_textos(TRANSACAO_MAPEAMENTO, opcoes_textos_status0, timeout=0.1,
-                                    log_fn=log, ordem_blocos=[21], deslocamento_x=0.0,
+        resultado_press_f8 = aguardar_textos(TRANSACAO_MAPEAMENTO, opcoes_textos_status0, timeout=0.1, 
+                                    log_fn=log, ordem_blocos=[21], deslocamento_x=0.0, 
                                     n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=False, ignorar_textos=ignorar_textos)
 
         if resultado_press_f8:
             limpar_campo_wms()
-            time.sleep(0.1)
+            time.sleep(0.05)
             limpar_campo_wms()
+            time.sleep(0.1)
             time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
             escrever_wms(str(item))
             break
@@ -779,6 +787,14 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
                 },
             )
 
+
+
+
+
+
+
+
+
     hash_ref, _ = detectar_mudanca_tela(
         limiar=3,
         max_espera=0.1,
@@ -788,13 +804,12 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
     atalho_wms(executar_campo)
     time.sleep(PAUSA_APOS_EXECUTAR_CONSULTA)
 
-
     while cursor_carregando():
         if stop_requested:
             log("[ABORT] Parada solicitada antes da pesquisa.")
             raise AbortarAlteracao("parada_solicitada")
         print("Aguardando...")
-        time.sleep(0.1)
+        time.sleep(0.5)
         
     flag_item_encontrado = False
 
@@ -840,6 +855,7 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
             break
 
     if flag_item_encontrado == "nao_retornou":
+        flag_item_encontrado = False
         atalho_wms(cancelar_consulta)
 
         if callable(status_cb):
@@ -906,10 +922,10 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
 
     while cursor_carregando():
         if stop_requested:
-            log("[ABORT] Parada solicitada antes da pesquisa.")
+            log("[ABORT] Parada solicitada após a pesquisa.")
             raise AbortarAlteracao("parada_solicitada")
         print("Aguardando...")
-        time.sleep(0.1)
+        time.sleep(0.5)
 
     # ================================================================
     # ORDEM DE VERIFICAÇÃO APÓS SALVAR:
@@ -1132,7 +1148,6 @@ def iniciar_alteracao_itens(data, status_cb=None):
             continue
 
         except Exception as exc:
-
             return resultados
 
     alt_f4()
