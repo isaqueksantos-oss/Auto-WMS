@@ -248,7 +248,7 @@ def cursor_carregando():
     h_wait = ctypes.windll.user32.LoadCursorW(0, IDC_WAIT)
     h_appstarting = ctypes.windll.user32.LoadCursorW(0, IDC_APPSTARTING)
 
-    for tentativa in range(3):
+    for tentativa in range(2):
         ci = CURSORINFO()
         ci.cbSize = ctypes.sizeof(CURSORINFO)
 
@@ -257,8 +257,8 @@ def cursor_carregando():
         if ci.hCursor in (h_wait, h_appstarting):
             return True
 
-        if tentativa < 2:
-            time.sleep(0.3)
+        if tentativa < 1:
+            time.sleep(0.1)
 
     return False
 
