@@ -2540,10 +2540,14 @@ class MainWindow:
             # status_callback may be called as (idx, status) or (idx, status, value)
             def _status_cb(idx, status, value=None):
                 if excel_input:
-                    # Nesta automação, o valor é o item e a primeira coluna é a planta.
+                    # O item pode se repetir; para esta automação, o índice
+                    # da linha é a referência correta para atualizar o status.
                     valor_busca = (
                         None
-                        if self._nome_automacao_chave(nome) == "remover mapeamento"
+                        if self._nome_automacao_chave(nome) in (
+                            "remover mapeamento",
+                            "alterar ponto minimo",
+                        )
                         else value
                     )
                     self.root.after(0, self._excel_status_update, excel_input, idx, status, valor_busca)
