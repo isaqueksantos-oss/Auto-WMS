@@ -84,19 +84,6 @@ def _processar_linha(i, valores, status_cb):
             },
         )
 
-
-
-
-
-
-
-
-
-
-
-
-
-
     # --- Pesquisa o item --- #
     if not base.pesquisar_item(item):
         if callable(status_cb):
@@ -173,7 +160,6 @@ def _processar_linha(i, valores, status_cb):
             "linha": i,
             "item": item,
             "id_local": id_local,
-            "ponto_minimo": ponto_minimo,
             "status": "Local_inexistente",
         }
 
