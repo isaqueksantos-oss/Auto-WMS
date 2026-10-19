@@ -90,7 +90,9 @@ class ExcelInput(tk.Text):
                 "Alterado", "Inexistente", "Concluído",
                 "Mapeamento_inexistente", "Transacao_nao_encontrada",
                 "Item_nao_retornou", "Item não encontrado",
-                "Nao_confirmado", "Falha_wms", "Foco_perdido",
+                "Item_nao_encontrado", "Local_inexistente",
+                "Consulta_nao_confirmada", "Nao_confirmado",
+                "Falha_wms", "Foco_perdido",
             }
 
             if parts and parts[-1] in possible_statuses:
