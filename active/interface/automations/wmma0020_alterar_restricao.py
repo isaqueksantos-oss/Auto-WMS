@@ -556,9 +556,7 @@ def _processar_linha(i, planta, item, classe, restricao, status_cb):
 
     log(
         f"[RESTRICAO] Linha {i}: item {item} | planta {planta} | "
-        f"{classe} -> restrição {restricao}"
-    )
-
+        f"{classe} -> restrição {restricao}")
 
     # Etapa 1.1: localizar tela de pesquisa
     now = time.strftime("[%H:%M:%S]")
@@ -667,14 +665,13 @@ def _processar_linha(i, planta, item, classe, restricao, status_cb):
                 log("[ABORT] Parada solicitada antes da pesquisa.")
                 raise AbortarAlteracao("parada_solicitada")
             print("Aguardando...")
-            time.sleep(0.5)
 
 
         ignorar_textos = ["list of values", "enter query"]
         opcoes_textos_status0 = {"encontrou_press_f8": ["press", "f8", "press f8", "press F8 to", "press F8 to execute", "f8 to execute"]}
         resultado_press_f8 = aguardar_textos(TRANSACAO_MAPEAMENTO, opcoes_textos_status0, timeout=0.1, 
                                     log_fn=log, ordem_blocos=[21], deslocamento_x=0.0, 
-                                    n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=False, ignorar_textos=ignorar_textos)
+                                    n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=True, ignorar_textos=ignorar_textos)
 
         if resultado_press_f8:
             break
@@ -705,12 +702,6 @@ def _processar_linha(i, planta, item, classe, restricao, status_cb):
                 },
             )
 
-    hash_ref, _ = detectar_mudanca_tela(
-        limiar=3,
-        max_espera=0.1,
-        log_fn=lambda *_: None,
-    )
-
 
 
 
@@ -735,23 +726,13 @@ def _processar_linha(i, planta, item, classe, restricao, status_cb):
     time.sleep(0.1)
     escrever_wms(str(item))
     atalho_wms(executar_campo)
-    time.sleep(0.5)
+    time.sleep(0.2)
 
     while cursor_carregando():
         if stop_requested:
             log("[ABORT] Parada solicitada antes da pesquisa.")
             raise AbortarAlteracao("parada_solicitada")
         print("Aguardando...")
-        time.sleep(0.5)
-
-
-
-    hash_ref, _ = detectar_mudanca_tela(
-        limiar=3,
-        max_espera=0.1,
-        log_fn=lambda *_: None,
-    )
-
 
 
     flag_item_encontrado = False
@@ -920,7 +901,6 @@ def _processar_linha(i, planta, item, classe, restricao, status_cb):
             log("[ABORT] Parada solicitada antes da pesquisa.")
             raise AbortarAlteracao("parada_solicitada")
         print("Aguardando...")
-        time.sleep(0.1)
 
         
     # O WMS pode ter caído durante a consulta.
@@ -950,14 +930,14 @@ def _processar_linha(i, planta, item, classe, restricao, status_cb):
 
         garantir_foco_wms()
 
-        time.sleep(0.5)
+        time.sleep(0.2)
 
         ignorar_textos = ["list of values"]
         opcoes_textos_status2 = {"encontrou_pesquisa_nao_retornou": ["pesquisa não", "não retornou", "retornou registro", "press f8", 
                                                                      "press", "f8", "press F8 to execute", "f8 to execute"]}
         resultado_texto_status2 = aguardar_textos(TRANSACAO_MAPEAMENTO, opcoes_textos_status2, timeout=0.1, 
                                     log_fn=log, ordem_blocos=[21], deslocamento_x=0.0, 
-                                    n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=False, ignorar_textos=ignorar_textos)
+                                    n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=True, ignorar_textos=ignorar_textos)
         print(f"resultado_texto_status2: {resultado_texto_status2}")
 
         if resultado_texto_status2 is None:
@@ -975,6 +955,7 @@ def _processar_linha(i, planta, item, classe, restricao, status_cb):
 
     if flag_mapeamento_encontrado != "sim":
         atalho_wms(cancelar_consulta)
+        time.sleep(0.1)
         atalho_wms(proximo_bloco)
 
         status_mapeamento = "Mapeamento_inexistente"
@@ -1012,6 +993,7 @@ def _processar_linha(i, planta, item, classe, restricao, status_cb):
 
         # Limpa o valor atual antes de gravar o novo.
         limpar_campo_wms()
+        time.sleep(PAUSA_APOS_LIMPAR_CAMPO)
         escrever_wms(str(restricao))
 
         # F10 -> salva a alteração.

@@ -713,8 +713,15 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
     print(f"{time.strftime('[%H:%M:%S]')} finalizou procura por HERDAR MAPEAMENTO / SOBRESCREVER")
 
 
-    # --- Pesquisa item --- #
 
+
+
+
+
+
+
+
+    # --- Pesquisa item --- #
 
 
 
@@ -739,14 +746,13 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
                 log("[ABORT] Parada solicitada antes da pesquisa.")
                 raise AbortarAlteracao("parada_solicitada")
             print("Aguardando...")
-            time.sleep(0.5)
 
 
         ignorar_textos = ["list of values", "enter query"]
         opcoes_textos_status0 = {"encontrou_press_f8": ["press", "f8", "press f8", "press F8 to", "press F8 to execute", "f8 to execute"]}
         resultado_press_f8 = aguardar_textos(TRANSACAO_MAPEAMENTO, opcoes_textos_status0, timeout=0.1, 
                                     log_fn=log, ordem_blocos=[21], deslocamento_x=0.0, 
-                                    n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=False, ignorar_textos=ignorar_textos)
+                                    n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=True, ignorar_textos=ignorar_textos)
 
         if resultado_press_f8:
             break
@@ -784,27 +790,24 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
 
 
 
+
+
+
+
+
+
+
     limpar_campo_wms()
     time.sleep(0.1)
     escrever_wms(str(item))
     atalho_wms(executar_campo)
-    time.sleep(0.5)
+    time.sleep(0.2)
 
     while cursor_carregando():
         if stop_requested:
             log("[ABORT] Parada solicitada antes da pesquisa.")
             raise AbortarAlteracao("parada_solicitada")
         print("Aguardando...")
-        time.sleep(0.5)
-
-
-
-    hash_ref, _ = detectar_mudanca_tela(
-        limiar=3,
-        max_espera=0.1,
-        log_fn=lambda *_: None,
-    )
-
 
 
     flag_item_encontrado = False
@@ -829,7 +832,7 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
                                                                      "press", "f8", "press F8 to execute", "f8 to execute"]}
         resultado = aguardar_textos(TRANSACAO_MAPEAMENTO, opcoes_textos_status1, timeout=0.1, 
                                     log_fn=log, ordem_blocos=[21], deslocamento_x=0.0, 
-                                    n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=False, ignorar_textos=ignorar_textos)
+                                    n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=True, ignorar_textos=ignorar_textos)
 
         print(f"record.: {resultado}")
 
@@ -893,14 +896,13 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
 
     # Preenche os dados do novo mapeamento.
     atalho_wms(proximo_bloco)
-    time.sleep(0.5)
+    time.sleep(0.2)
 
     while cursor_carregando():
         if stop_requested:
             log("[ABORT] Parada solicitada antes da pesquisa.")
             raise AbortarAlteracao("parada_solicitada")
         print("Aguardando...")
-        time.sleep(0.5)
         
     atalho_wms(inserir_registro)
     time.sleep(0.1)
@@ -947,7 +949,6 @@ def _processar_linha(i, planta, item, classe, priori, restricao, lastro, camada,
             log("[ABORT] Parada solicitada após a pesquisa.")
             raise AbortarAlteracao("parada_solicitada")
         print("Aguardando...")
-        time.sleep(0.5)
 
     # ================================================================
     # ORDEM DE VERIFICAÇÃO APÓS SALVAR:

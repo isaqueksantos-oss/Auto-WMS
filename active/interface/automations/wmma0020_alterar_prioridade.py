@@ -477,7 +477,7 @@ def _renavegar_ate_mapeamento(log_fn=None):
     acao_limpar()
     time.sleep(0.3)
 
-    detectar_mudanca_tela(limiar=3, max_espera=0.1, log_fn=lambda *_: None)
+    # detectar_mudanca_tela(limiar=3, max_espera=0.1, log_fn=lambda *_: None)
 
     resultado = aguardar_textos(
         TRANSACAO_MAPEAMENTO,
@@ -507,8 +507,7 @@ def _renavegar_ate_mapeamento(log_fn=None):
         )
         return False
 
-    time.sleep(0.5)
-    detectar_mudanca_tela(limiar=3, max_espera=3.5, log_fn=log_fn)
+    #detectar_mudanca_tela(limiar=3, max_espera=3.5, log_fn=log_fn)
 
     log_fn(
         f"{time.strftime('[%H:%M:%S]')} "
@@ -601,7 +600,7 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
 
         log("[WARN] Transação não encontrada. Tentando novamente...")
         flag_tela_mapeamento = False
-        time.sleep(0.5)
+        time.sleep(0.2)
 
     if flag_tela_mapeamento is False:
         if callable(status_cb):
@@ -654,18 +653,17 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
         time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
 
         while cursor_carregando():
-            if stop_requested:
-                log("[ABORT] Parada solicitada antes da pesquisa.")
-                raise AbortarAlteracao("parada_solicitada")
-            print("Aguardando...")
-            time.sleep(0.5)
+           if stop_requested:
+               log("[ABORT] Parada solicitada antes da pesquisa.")
+               raise AbortarAlteracao("parada_solicitada")
+           print("Aguardando...")
 
 
         ignorar_textos = ["list of values", "enter query"]
         opcoes_textos_status0 = {"encontrou_press_f8": ["press", "f8", "press f8", "press F8 to", "press F8 to execute", "f8 to execute"]}
         resultado_press_f8 = aguardar_textos(TRANSACAO_MAPEAMENTO, opcoes_textos_status0, timeout=0.1, 
                                     log_fn=log, ordem_blocos=[21], deslocamento_x=0.0, 
-                                    n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=False, ignorar_textos=ignorar_textos)
+                                    n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=True, ignorar_textos=ignorar_textos)
 
         if resultado_press_f8:
             break
@@ -697,15 +695,6 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
             )
 
 
-    hash_ref, _ = detectar_mudanca_tela(
-        limiar=3,
-        max_espera=0.1,
-        log_fn=lambda *_: None,
-    )
-
-
-
-
 
 
 
@@ -723,23 +712,13 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
     time.sleep(0.1)
     escrever_wms(str(item))
     atalho_wms(executar_campo)
-    time.sleep(0.5)
+    time.sleep(0.2)
 
     while cursor_carregando():
-        if stop_requested:
-            log("[ABORT] Parada solicitada antes da pesquisa.")
-            raise AbortarAlteracao("parada_solicitada")
-        print("Aguardando...")
-        time.sleep(0.5)
-
-
-
-    hash_ref, _ = detectar_mudanca_tela(
-        limiar=3,
-        max_espera=0.1,
-        log_fn=lambda *_: None,
-    )
-
+       if stop_requested:
+           log("[ABORT] Parada solicitada antes da pesquisa.")
+           raise AbortarAlteracao("parada_solicitada")
+       print("Aguardando...")
 
 
     flag_item_encontrado = False
@@ -764,7 +743,7 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
                                                                      "press", "f8", "press F8 to execute", "f8 to execute"]}
         resultado = aguardar_textos(TRANSACAO_MAPEAMENTO, opcoes_textos_status1, timeout=0.1, 
                                     log_fn=log, ordem_blocos=[21], deslocamento_x=0.0, 
-                                    n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=False, ignorar_textos=ignorar_textos)
+                                    n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=True, ignorar_textos=ignorar_textos)
 
         print(f"record.: {resultado}")
 
@@ -836,7 +815,6 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
     atalho_wms(ativar_edicao)
     time.sleep(PAUSA_APOS_ATIVAR_CONSULTA)
 
-
     timer_enter_query = time.time()
     opcoes_enter_query = {
         "mensagem_enter_query": [
@@ -906,11 +884,11 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
     time.sleep(PAUSA_APOS_EXECUTAR_CONSULTA)
     
     while cursor_carregando():
-        if stop_requested:
-            log("[ABORT] Parada solicitada após a pesquisa.")
-            raise AbortarAlteracao("parada_solicitada")
-        print("Aguardando...")
-        time.sleep(0.5)
+       if stop_requested:
+           log("[ABORT] Parada solicitada após a pesquisa.")
+           raise AbortarAlteracao("parada_solicitada")
+       print("Aguardando...")
+
 
     # O WMS pode ter caído durante a consulta.
     #if detectar_erro_wms_caido(timeout=0.5):
@@ -939,14 +917,14 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
 
         garantir_foco_wms()
 
-        time.sleep(0.5)
+        time.sleep(0.2)
 
         ignorar_textos = ["list of values"]
         opcoes_textos_status2 = {"encontrou_pesquisa_nao_retornou": ["pesquisa não", "não retornou", "retornou registro", "press f8", 
                                                                      "press", "f8", "press F8 to execute", "f8 to execute"]}
         resultado_texto_status2 = aguardar_textos(TRANSACAO_MAPEAMENTO, opcoes_textos_status2, timeout=0.1, 
                                     log_fn=log, ordem_blocos=[21], deslocamento_x=0.0, 
-                                    n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=False, ignorar_textos=ignorar_textos)
+                                    n_clicks=0, clicar=False, modo="neutro", roi_retry_between_blocks=True, ignorar_textos=ignorar_textos)
         print(f"resultado_texto_status2: {resultado_texto_status2}")
 
         if resultado_texto_status2 is None:
@@ -964,6 +942,7 @@ def _processar_linha(i, planta, item, classe, prioridade, status_cb):
 
     if flag_mapeamento_encontrado != "sim":
         atalho_wms(cancelar_consulta)
+        time.sleep(0.1)
         atalho_wms(proximo_bloco)
 
         status_mapeamento = "Mapeamento_inexistente"
@@ -1237,10 +1216,10 @@ def iniciar_automacao(
     acao_limpar()
     time.sleep(0.3)
 
-    hash_ref, _ = detectar_mudanca_tela(limiar=3,
-        max_espera=0.1,
-        log_fn=lambda *_: None,
-    )
+    # hash_ref, _ = detectar_mudanca_tela(limiar=3,
+    #     max_espera=0.1,
+    #     log_fn=lambda *_: None,
+    # )
 
     resultado = aguardar_textos(
         TRANSACAO_MAPEAMENTO,
@@ -1285,21 +1264,21 @@ def iniciar_automacao(
         time.sleep(0.5)
 
         while cursor_carregando():
-            if stop_requested:
-                log("[ABORT] Parada solicitada após a pesquisa.")
-                return resultados
-            print("Aguardando...")
-            time.sleep(0.5)
+           if stop_requested:
+               log("[ABORT] Parada solicitada após a pesquisa.")
+               return resultados
+           print("Aguardando...")
 
-        hash_ref, mudou = detectar_mudanca_tela(
-            hash_ref,
-            limiar=3,
-            max_espera=3.5,
-            log_fn=log_fn,
-        )
 
-        if not mudou:
-            log_fn("[WARN] Nenhuma mudança visual detectada após digitação.")
+        # hash_ref, mudou = detectar_mudanca_tela(
+        #     hash_ref,
+        #     limiar=3,
+        #     max_espera=3.5,
+        #     log_fn=log_fn,
+        # )
+
+        # if not mudou:
+        #     log_fn("[WARN] Nenhuma mudança visual detectada após digitação.")
 
         resultados = iniciar_alteracao_itens(data, status_cb=status_callback)
 
