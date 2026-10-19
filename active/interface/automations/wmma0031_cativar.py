@@ -75,8 +75,8 @@ def _processar_linha(i, valores, status_cb):
     except Exception as erro:
         base.log(f"[WARN] Falha ao atualizar status da linha {i}: {erro}")
 
-    if base.detectar_erro_wms_caido(timeout=0.5):
-        raise base.WMSCaiuError()
+    #if base.detectar_erro_wms_caido(timeout=0.5):
+    #    raise base.WMSCaiuError()
 
     base.garantir_foco_wms()
 
@@ -111,8 +111,8 @@ def _processar_linha(i, valores, status_cb):
     # --- Item: Ctrl+V + TAB (desce direto para o bloco de Locais) --- #
     base.colar_item_e_descer(item)
 
-    if base.detectar_erro_wms_caido(timeout=0.5):
-        raise base.WMSCaiuError()
+    #if base.detectar_erro_wms_caido(timeout=0.5):
+    #    raise base.WMSCaiuError()
 
     # --- Local: TAB (Planta -> Local), Ctrl+V, TAB (confirma) --- #
     base.ir_da_planta_para_local()
@@ -143,13 +143,12 @@ def _processar_linha(i, valores, status_cb):
             f"com qt mínima {qt_minima}."
         )
 
-        # O F10 já devolveu o cursor ao bloco de Itens.
-        base.voltar_para_bloco_itens()
+        base.limpar_shift_f7
 
         return _resultado(i, item, id_local, qt_minima, "Cativado")
 
-    if base.detectar_erro_wms_caido(timeout=0.8):
-        raise base.WMSCaiuError()
+    #if base.detectar_erro_wms_caido(timeout=0.8):
+    #    raise base.WMSCaiuError()
 
     # O local já pode estar cativado para este item.
     if base.detectar_registro_duplicado():
@@ -245,6 +244,9 @@ def iniciar_automacao(
         status="sucesso",
         **totais,
     )
+
+    time.sleep(0.5)
+    base.alt_f4()
 
     return resultados
 

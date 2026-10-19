@@ -54,8 +54,8 @@ def _processar_linha(i, valores, status_cb):
     except Exception as erro:
         base.log(f"[WARN] Falha ao atualizar status da linha {i}: {erro}")
 
-    if base.detectar_erro_wms_caido(timeout=0.5):
-        raise base.WMSCaiuError()
+    #if base.detectar_erro_wms_caido(timeout=0.5):
+    #    raise base.WMSCaiuError()
 
     base.garantir_foco_wms()
 
@@ -84,6 +84,19 @@ def _processar_linha(i, valores, status_cb):
             },
         )
 
+
+
+
+
+
+
+
+
+
+
+
+
+
     # --- Pesquisa o item --- #
     if not base.pesquisar_item(item):
         if callable(status_cb):
@@ -98,6 +111,7 @@ def _processar_linha(i, valores, status_cb):
             "id_local": id_local,
             "status": "Item_nao_encontrado",
         }
+
 
     # --- Bloco de locais: consulta pelo local --- #
     base.descer_para_bloco_locais()
@@ -117,20 +131,36 @@ def _processar_linha(i, valores, status_cb):
     base.atalho_wms(executar_campo)
     time.sleep(base.PAUSA_APOS_EXECUTAR_CONSULTA)
 
-    if base.detectar_erro_wms_caido(timeout=0.5):
-        raise base.WMSCaiuError()
+    #if base.detectar_erro_wms_caido(timeout=0.5):
+    #    raise base.WMSCaiuError()
+
+
+
+
+
+
+
+
+
+
+
+
 
     # --- Caso 1: local não cativado para este item --- #
-    if base.detectar_pesquisa_sem_registro():
+    resultado_encontrou_id_local = base.detectar_id_local_sem_registro()
+    if resultado_encontrou_id_local == "nao_retornou":
         base.log(
             f"{time.strftime('[%H:%M:%S]')} "
             f"[INFO] Local {id_local} não está cativado para o item "
-            f"{item}. Nada a descativar."
+            f"{item}. Nada a alterar."
         )
 
         base.limpar_shift_f4()
+        time.sleep(0.5)
+        base.cancelar_consulta()
+        time.sleep(0.5)
+        base.limpar_shift_f7()
 
-        base.atalho_wms(executar_campo)
         time.sleep(base.PAUSA_APOS_EXECUTAR_CONSULTA)
 
         if callable(status_cb):
@@ -139,8 +169,32 @@ def _processar_linha(i, valores, status_cb):
             except Exception:
                 pass
 
-        time.sleep(base.PAUSA_ANTES_PROXIMO_BLOCO)
-        base.atalho_wms(proximo_bloco)
+        return {
+            "linha": i,
+            "item": item,
+            "id_local": id_local,
+            "ponto_minimo": ponto_minimo,
+            "status": "Local_inexistente",
+        }
+
+    if resultado_encontrou_id_local is None:
+        base.log(
+            f"{time.strftime('[%H:%M:%S]')} "
+            f"[WARN] Consulta do local {id_local} para o item {item} "
+            "não confirmada. Ponto mínimo não alterado."
+        )
+
+        base.limpar_shift_f4()
+        time.sleep(0.5)
+        base.cancelar_consulta()
+        time.sleep(0.5)
+        base.limpar_shift_f7()
+
+        if callable(status_cb):
+            try:
+                status_cb(i, "Consulta_nao_confirmada", item)
+            except Exception:
+                pass
 
         return {
             "linha": i,
@@ -149,7 +203,20 @@ def _processar_linha(i, valores, status_cb):
             "status": "Local_inexistente",
         }
 
+
+
+
+
+
+
+
+
+
+
+
+
     # --- Caso 2: registro encontrado -> remover --- #
+    
     base.atalho_wms(remover_registro)
     time.sleep(base.PAUSA_APOS_REMOVER)
 
@@ -167,9 +234,8 @@ def _processar_linha(i, valores, status_cb):
             f"[SUCESSO] Local {id_local} descativado do item {item}."
         )
 
-        # O F10 já devolveu o cursor ao bloco de itens.
-        base.voltar_para_bloco_itens()
-
+        base.limpar_shift_f7
+        
         return {
             "linha": i,
             "item": item,
@@ -177,8 +243,8 @@ def _processar_linha(i, valores, status_cb):
             "status": "Descativado",
         }
 
-    if base.detectar_erro_wms_caido(timeout=0.8):
-        raise base.WMSCaiuError()
+    #if base.detectar_erro_wms_caido(timeout=0.8):
+    #    raise base.WMSCaiuError()
 
     if callable(status_cb):
         try:
@@ -260,6 +326,9 @@ def iniciar_automacao(
         status="sucesso",
         **totais,
     )
+
+    time.sleep(0.5)
+    base.alt_f4()
 
     return resultados
 

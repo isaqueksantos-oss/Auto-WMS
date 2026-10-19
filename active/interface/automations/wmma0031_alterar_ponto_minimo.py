@@ -43,10 +43,7 @@ status_callback = None
 def _processar_linha(i, valores, status_cb):
     item, id_local, ponto_minimo = valores
 
-    base.log(
-        f"[PONTO MINIMO] Linha {i}: item {item} | local {id_local} "
-        f"-> {ponto_minimo}"
-    )
+    base.log(f"[PONTO MINIMO] Linha {i}: item {item} | local {id_local} | {ponto_minimo}")
 
     if base.stop_requested:
         raise base.AbortarExecucao("parada_solicitada")
@@ -57,8 +54,8 @@ def _processar_linha(i, valores, status_cb):
     except Exception as erro:
         base.log(f"[WARN] Falha ao atualizar status da linha {i}: {erro}")
 
-    if base.detectar_erro_wms_caido(timeout=0.5):
-        raise base.WMSCaiuError()
+    #if base.detectar_erro_wms_caido(timeout=0.5):
+    #    raise base.WMSCaiuError()
 
     base.garantir_foco_wms()
 
@@ -87,6 +84,18 @@ def _processar_linha(i, valores, status_cb):
                 "status": "Transacao_nao_encontrada",
             },
         )
+
+
+
+
+
+
+
+
+
+
+
+
 
     # --- Pesquisa o item --- #
     if not base.pesquisar_item(item):
@@ -122,11 +131,23 @@ def _processar_linha(i, valores, status_cb):
     base.atalho_wms(executar_campo)
     time.sleep(base.PAUSA_APOS_EXECUTAR_CONSULTA)
 
-    if base.detectar_erro_wms_caido(timeout=0.5):
-        raise base.WMSCaiuError()
+    #if base.detectar_erro_wms_caido(timeout=0.5):
+    #    raise base.WMSCaiuError()
+
+
+
+
+
+
+
+
+
+
+
 
     # --- Caso 1: local não cativado para este item --- #
-    if base.detectar_pesquisa_sem_registro():
+    resultado_encontrou_id_local = base.detectar_id_local_sem_registro()
+    if resultado_encontrou_id_local == "nao_retornou":
         base.log(
             f"{time.strftime('[%H:%M:%S]')} "
             f"[INFO] Local {id_local} não está cativado para o item "
@@ -134,8 +155,11 @@ def _processar_linha(i, valores, status_cb):
         )
 
         base.limpar_shift_f4()
+        time.sleep(0.5)
+        base.cancelar_consulta()
+        time.sleep(0.5)
+        base.limpar_shift_f7()
 
-        base.atalho_wms(executar_campo)
         time.sleep(base.PAUSA_APOS_EXECUTAR_CONSULTA)
 
         if callable(status_cb):
@@ -143,9 +167,6 @@ def _processar_linha(i, valores, status_cb):
                 status_cb(i, "Local_inexistente", item)
             except Exception:
                 pass
-
-        time.sleep(base.PAUSA_ANTES_PROXIMO_BLOCO)
-        base.atalho_wms(proximo_bloco)
 
         return {
             "linha": i,
@@ -155,14 +176,53 @@ def _processar_linha(i, valores, status_cb):
             "status": "Local_inexistente",
         }
 
+    if resultado_encontrou_id_local is None:
+        base.log(
+            f"{time.strftime('[%H:%M:%S]')} "
+            f"[WARN] Consulta do local {id_local} para o item {item} "
+            "não confirmada. Ponto mínimo não alterado."
+        )
+
+        base.limpar_shift_f4()
+        time.sleep(0.5)
+        base.cancelar_consulta()
+        time.sleep(0.5)
+        base.limpar_shift_f7()
+
+        if callable(status_cb):
+            try:
+                status_cb(i, "Consulta_nao_confirmada", item)
+            except Exception:
+                pass
+
+        return {
+            "linha": i,
+            "item": item,
+            "id_local": id_local,
+            "ponto_minimo": ponto_minimo,
+            "status": "Consulta_nao_confirmada",
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
     # --- Caso 2: registro encontrado -> alterar a Qt. Mínima --- #
-    # Após o F8 o cursor retorna ao campo PLANTA do registro; dali
-    # 2 Shift+TAB chegam à Qt. Mínima.
+
     base.ir_da_planta_para_qt_minima()
 
     base.limpar_campo_wms()
+    time.sleep(0.5)
     base.escrever_wms(str(ponto_minimo))
-
+    time.sleep(0.5)
     base.atalho_wms(salvar_registro)
 
     if base.aguardar_transacao_completada(timeout=4.0):
@@ -178,8 +238,7 @@ def _processar_linha(i, valores, status_cb):
             f"alterado para {ponto_minimo}."
         )
 
-        # O F10 já devolveu o cursor ao bloco de itens.
-        base.voltar_para_bloco_itens()
+        base.limpar_shift_f7
 
         return {
             "linha": i,
@@ -189,8 +248,10 @@ def _processar_linha(i, valores, status_cb):
             "status": "Alterado",
         }
 
-    if base.detectar_erro_wms_caido(timeout=0.8):
-        raise base.WMSCaiuError()
+        
+
+    #if base.detectar_erro_wms_caido(timeout=0.8):
+    #    raise base.WMSCaiuError()
 
     if callable(status_cb):
         try:
@@ -273,6 +334,9 @@ def iniciar_automacao(
         status="sucesso",
         **totais,
     )
+
+    time.sleep(0.5)
+    base.alt_f4()
 
     return resultados
 

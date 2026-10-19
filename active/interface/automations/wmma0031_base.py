@@ -36,11 +36,14 @@ from interface.automations.base_automation import (
     digitar_transacao,
     executar_campo,
     inserir_registro,
+    alt_f4,
     limpar_campo,
+    limpar_shift_f7,
     proximo_campo,
     proximo_bloco,
     remover_registro,
     salvar_registro,
+    cursor_carregando,
 )
 
 
@@ -86,7 +89,7 @@ PAUSA_APOS_CONFIRMAR_ITEM = 0.50
 # automático de endereço e classe.
 PAUSA_APOS_CONFIRMAR_LOCAL = 0.40
 
-TIMEOUT_BARRA_STATUS = 1.5
+TIMEOUT_BARRA_STATUS = 0.5
 
 # Tratamento de popups (erro de duplicidade e diálogo de salvamento).
 PAUSA_CONFIRMAR_POPUP = 0.25
@@ -302,7 +305,7 @@ def detectar_clipboard_negado(timeout=1.0):
         opcoes,
         timeout=timeout,
         log_fn=log,
-        ordem_blocos=[12, 13, 8, 17],  # modal centralizado
+        ordem_blocos=[1, 6],  # modal centralizado
         deslocamento_x=0.0,
         n_clicks=0,
         clicar=False,
@@ -364,13 +367,6 @@ def colar_wms(texto):
     atalho_wms(colar_ctrl_v)
     time.sleep(PAUSA_APOS_DIGITAR)
 
-    # O Java pode recusar o acesso ao clipboard.
-    if detectar_clipboard_negado():
-        fechar_popup_clipboard()
-
-        # Garante o campo vazio antes de redigitar.
-        limpar_campo_wms()
-        return escrever_wms(str(texto))
 
     if not janela_wms_esta_ativa():
         titulo_atual = _titulo_janela_ativa() or "(desconhecida)"
@@ -421,6 +417,8 @@ def resetar_formulario():
     time.sleep(PAUSA_APOS_ENTER_QUERY)
 
     atalho_wms(cancelar_consulta)
+    time.sleep(PAUSA_APOS_CANCELAR_CONSULTA)
+    atalho_wms(limpar_shift_f7)
     time.sleep(PAUSA_APOS_CANCELAR_CONSULTA)
 
 
@@ -490,18 +488,9 @@ def ir_da_planta_para_qt_minima():
     """
     for _ in range(SHIFT_TABS_PLANTA_ATE_QT_MINIMA):
         campo_anterior_wms()
+        time.sleep(0.1)
 
 
-def voltar_para_bloco_itens():
-    """
-    Garante que o cursor esteja no bloco de itens antes do próximo item.
-
-    Na wmma0031 o F10 (salvar) já devolve o foco ao bloco de itens,
-    como se executasse F10 + PgUp. Por isso, após um salvamento
-    bem-sucedido NÃO se deve chamar proximo_bloco() — isso desceria
-    novamente para o bloco de locais.
-    """
-    time.sleep(PAUSA_ANTES_PROXIMO_BLOCO)
 
 
 # =================== DETECÇÃO DE TELA =================== #
@@ -521,7 +510,7 @@ def capturar_hash_tela():
 
 def detectar_mudanca_tela(
     hash_ref=None,
-    limiar=5,
+    limiar=3,
     max_espera=3.5,
     intervalo=0.1,
     confirmacoes=1,
@@ -559,22 +548,24 @@ def detectar_mudanca_tela(
     return hash_ref, False
 
 
-def detectar_pesquisa_sem_registro(timeout=None):
+def detectar_item_sem_registro(timeout=None):
     """
     Detecta "A pesquisa não retornou registro algum." na barra de status.
     """
+    flag_item_encontrado = None
     if timeout is None:
         timeout = TIMEOUT_BARRA_STATUS
 
     opcoes = {
-        "sem_registro": [
-            "a pesquisa não retornou registro algum",
+        "encontrou_codigo_do_item": [
+            "codigo do item",
+            "codigo item",
+        ],
+        "encontrou_pesquisa_nao_retornou": [
             "a pesquisa nao retornou registro algum",
-            "não retornou registro algum",
             "nao retornou registro algum",
-            "não retornou registro",
             "nao retornou registro",
-        ]
+        ],
     }
 
     resultado = aguardar_textos(
@@ -582,7 +573,7 @@ def detectar_pesquisa_sem_registro(timeout=None):
         opcoes,
         timeout=timeout,
         log_fn=log,
-        ordem_blocos=[21, 22],
+        ordem_blocos=[21],
         deslocamento_x=0.0,
         n_clicks=0,
         clicar=False,
@@ -594,14 +585,106 @@ def detectar_pesquisa_sem_registro(timeout=None):
         stop_checker=lambda: stop_requested,
     )
 
-    return bool(resultado)
+    print(f"record.: {resultado}")
+
+    if resultado is None:
+        flag_item_encontrado = "nao_retornou"
+        log("[INFO] 'Enter a query' ausente em 1 verificação. Item considerado encontrado.")
+        flag_item_encontrado = "nao_retornou"
+
+    elif any(texto in opcoes["encontrou_pesquisa_nao_retornou"] for texto in resultado):
+        log(f"{time.strftime('[%H:%M:%S]')} "
+            f"[ERRO] Item não retornou registro. "
+            "Abortando alteração..."
+        )
+        flag_item_encontrado = "nao_retornou"
+
+    elif any(texto in opcoes["encontrou_codigo_do_item"] for texto in resultado):
+
+        log(f"{time.strftime('[%H:%M:%S]')} "
+            f"[ERRO] Item encontrado. "
+            "Seguindo para a pesquisa de local..."
+        )
+        flag_item_encontrado = "retornou"
+
+
+    return flag_item_encontrado
+
+
+def detectar_id_local_sem_registro(timeout=None):
+    """
+    Detecta "A pesquisa não retornou registro algum." na barra de status.
+    """
+    flag_id_local_encontrado = None
+    if timeout is None:
+        timeout = TIMEOUT_BARRA_STATUS
+
+    opcoes = {
+        "encontrou_pesquisa_nao_retornou": [
+            "a pesquisa nao retornou registro algum",
+            "nao retornou registro algum",
+            "nao retornou registro",
+        ],
+        "encontrou_codigo_da_planta": [
+            "codigo da planta",
+            "codigo planta",
+        ]
+    }
+
+    resultado = aguardar_textos(
+        TRANSACAO,
+        opcoes,
+        timeout=timeout,
+        log_fn=log,
+        ordem_blocos=[21],
+        deslocamento_x=0.0,
+        n_clicks=0,
+        clicar=False,
+        modo="neutro",
+        ignorar_textos=[],
+        roi_attempts=2,
+        roi_delay=0.1,
+        roi_retry_between_blocks=True,
+        stop_checker=lambda: stop_requested,
+    )
+
+    print(f"record.: {resultado}")
+
+    if resultado is None:
+        log(
+            f"{time.strftime('[%H:%M:%S]')} "
+            "[WARN] Não foi possível identificar o resultado da consulta do local."
+        )
+        return None
+
+    texto_detectado = resultado[1]
+
+    if texto_detectado in opcoes["encontrou_pesquisa_nao_retornou"]:
+        log(
+            f"{time.strftime('[%H:%M:%S]')} "
+            "[INFO] A consulta do local não retornou registro."
+        )
+        flag_id_local_encontrado = "nao_retornou"
+
+    elif texto_detectado in opcoes["encontrou_codigo_da_planta"]:
+        log(
+            f"{time.strftime('[%H:%M:%S]')} "
+            "[INFO] Código da planta identificado na consulta do local."
+        )
+        flag_id_local_encontrado = "retornou"
+    else:
+        log(
+            f"{time.strftime('[%H:%M:%S]')} "
+            "[WARN] Resultado da consulta do local não reconhecido."
+        )
+
+    return flag_id_local_encontrado
 
 
 def aguardar_transacao_completada(timeout=4.0):
     """Confirma "Transação Completada." na barra de status após salvar."""
     opcoes_sucesso = {
         "transacao_completada": [
-            "transação completada",
             "transacao completada",
         ]
     }
@@ -611,7 +694,7 @@ def aguardar_transacao_completada(timeout=4.0):
         opcoes_sucesso,
         timeout=timeout,
         log_fn=log,
-        ordem_blocos=[21, 22],
+        ordem_blocos=[21],
         deslocamento_x=0.0,
         n_clicks=0,
         clicar=False,
@@ -641,7 +724,6 @@ def detectar_registro_duplicado(timeout=0.8):
     """Detecta o popup de tentativa de duplicação de registro."""
     opcoes = {
         "registro_duplicado": [
-            "tentativa de duplicação de registro",
             "tentativa de duplicacao de registro",
         ]
     }
@@ -930,15 +1012,18 @@ def pesquisar_item(item):
 
     colar_wms(str(item))
 
+    time.sleep(0.5)
+
     atalho_wms(executar_campo)
     time.sleep(PAUSA_APOS_EXECUTAR_CONSULTA)
 
     # O WMS pode ter caído durante a consulta.
-    if detectar_erro_wms_caido(timeout=0.5):
-        raise WMSCaiuError()
+    #if detectar_erro_wms_caido(timeout=0.5):
+    #    raise WMSCaiuError()
 
+    resultado_encontrou_item = detectar_item_sem_registro(timeout=TIMEOUT_RESULTADO_PESQUISA)
     # Item inexistente: a barra de status informa logo após o F8.
-    if detectar_pesquisa_sem_registro(timeout=TIMEOUT_RESULTADO_PESQUISA):
+    if resultado_encontrou_item == "nao_retornou":
         log(
             f"{time.strftime('[%H:%M:%S]')} "
             f"[INFO] Item {item} não retornou registro algum."
@@ -947,14 +1032,19 @@ def pesquisar_item(item):
         # Shift+F4 -> limpa a consulta, deixando a tela pronta para o
         # próximo item.
         limpar_shift_f4()
+        time.sleep(0.5)
+        limpar_shift_f7()
         return False
+    
+    elif resultado_encontrou_item == "retornou":
 
-    log(
-        f"{time.strftime('[%H:%M:%S]')} "
-        f"[INFO] Item {item} localizado."
-    )
-    return True
+        log(
+            f"{time.strftime('[%H:%M:%S]')} "
+            f"[INFO] Item {item} localizado."
+        )
+        return True
 
+    return False
 
 def aguardar_tela_transacao(timeout=60):
     """
@@ -966,16 +1056,16 @@ def aguardar_tela_transacao(timeout=60):
     resultado = aguardar_textos(
         TRANSACAO,
         {
-            "tela_locais": [
-                "mapeamento local cativo",
+            "tela_cativar": [
                 "qt. minima",
-                "qt. mínima",
-                "locais",
+                "qt minima",
+                "ressup bloqueado",
+                "mapeamento local cativo",
             ]
         },
         timeout=timeout,
         log_fn=log,
-        ordem_blocos=[1, 2, 6, 7, 11, 12],
+        ordem_blocos=[9, 8, 2, 1, 3],
         deslocamento_x=0.0,
         n_clicks=0,
         clicar=False,
@@ -1112,6 +1202,7 @@ def abrir_transacao(log_fn=None):
     time.sleep(0.3)
     acao_limpar()
     time.sleep(0.3)
+    limpar_shift_f7()
 
     hash_ref, _ = detectar_mudanca_tela(
         max_espera=0.1,
@@ -1120,14 +1211,14 @@ def abrir_transacao(log_fn=None):
 
     resultado = aguardar_textos(
         TRANSACAO,
-        {"programa": ["Programa:"]},
+        {"programa": ["Programa:", "programa"]},
         timeout=25,
         log_fn=log,
         ordem_blocos=[1],
         deslocamento_x=0.8,
         n_clicks=5,
         clicar=True,
-        modo="auto",
+        modo="neutro",
         ignorar_textos=["programas"],
         stop_checker=lambda: stop_requested,
     )
@@ -1144,7 +1235,7 @@ def abrir_transacao(log_fn=None):
 
     hash_ref, mudou = detectar_mudanca_tela(
         hash_ref,
-        limiar=6,
+        limiar=3,
         max_espera=3.5,
         log_fn=log_fn,
     )
