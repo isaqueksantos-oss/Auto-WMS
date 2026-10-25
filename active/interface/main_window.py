@@ -2,6 +2,8 @@ import os
 import time
 import threading
 import subprocess
+import win32api
+import win32con
 import ctypes
 from ctypes import wintypes
 from pathlib import Path
@@ -3188,7 +3190,9 @@ class MainWindow:
             deslocamento_x=0,
             n_clicks=1,
             clicar=True,
-            modo="auto"
+            modo="neutro",
+            roi_attempts=5,
+            roi_retry_between_blocks=True
         )
 
         if not resultado:
@@ -3201,11 +3205,7 @@ class MainWindow:
         print("[INFO] Confirmando JAVA UPDATE NECESSÁRIO...")
         time.sleep(0.5)
 
-        for _ in range(3):
-            pyautogui.press("tab")
-            time.sleep(0.2)
-
-        pyautogui.press("space")
+        pyautogui.press("tab", presses=2, interval=0.3)
 
         pyautogui.press("enter")
 
@@ -3218,8 +3218,8 @@ class MainWindow:
             raise RuntimeError("Janela de login não encontrada")
         time.sleep(0.3)
 
-        copiar_para_clipboard(usuario)
         focus_manager(["wms americanas - login"])
+        copiar_para_clipboard(usuario)
         time.sleep(0.3)
         pyautogui.hotkey("ctrl", "v")
         time.sleep(0.3)
@@ -3228,9 +3228,12 @@ class MainWindow:
         time.sleep(0.3)
 
         focus_manager(["wms americanas - login"])
+        copiar_para_clipboard(senha)
         time.sleep(0.3)
-        pyautogui.write(senha, interval=0.05)
+        pyautogui.hotkey("ctrl", "v")
         time.sleep(0.3)
+        copiar_para_clipboard("")
+
 
         pyautogui.press("enter")
         time.sleep(0.3)
