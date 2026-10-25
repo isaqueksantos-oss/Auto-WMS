@@ -385,7 +385,7 @@ def gerar_script_autologin(destino: str, project_root: Path | None = None) -> Pa
     else:
         pythonw = executavel_atual.with_name("pythonw.exe")
         interpretador = pythonw if pythonw.exists() else executavel_atual
-        comando = f'cd /d "{raiz_projeto}"\r\n"{interpretador}" -m interface.wms_launcher'
+        comando = f'cd /d "{raiz_projeto}"\r\n"{interpretador}" -B -m interface.wms_launcher'
 
     script = f"@echo off\r\n{comando}\r\n"
     caminho_destino.write_text(script, encoding="utf-8")
@@ -397,7 +397,7 @@ def diagnostico(log_fn=print) -> None:
     Executa um diagnostico rapido e imprime tudo que o launcher enxerga.
 
     Rode no terminal para descobrir por que o botao "nao faz nada":
-        python -m interface.wms_launcher --diagnostico
+        python -B -m interface.wms_launcher --diagnostico
     """
     log_fn("=" * 60)
     log_fn("DIAGNOSTICO AUTO WMS")

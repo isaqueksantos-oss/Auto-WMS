@@ -34,6 +34,7 @@ PALETAS = {
         "fg_suave": "#5a5a5a",
         # Campos
         "campo_bg": "#FFFFFF",
+        "campo_bg_desabilitado": "#ECECEC",
         "campo_fg": "#1f1f1f",
         "texto_bg": "#FFFFFF",
         "texto_fg": "#1a1a1a",
@@ -74,13 +75,14 @@ PALETAS = {
     "escuro": {
         # Fundos - Windows 11 dark (Mica)
         "bg": "#202020",
-        "bg_painel": "#272727",
+        "bg_painel": "#C6C2C2",
         "bg_conteudo": "#1C1C1C",
         # Texto
         "fg": "#FFFFFF",
         "fg_suave": "#C5C5C5",
         # Campos
-        "campo_bg": "#2D2D2D",
+        "campo_bg": "#6F6F6F",
+        "campo_bg_desabilitado": "#2D2D2D",
         "campo_fg": "#FFFFFF",
         "texto_bg": "#1C1C1C",
         "texto_fg": "#E4E4E4",
@@ -276,8 +278,14 @@ class ThemeManager:
 
         tipo: "padrao" | "campo" | "texto" | "log" | "header"
         """
-        self._registrados.append((widget, tipo))
+        if (widget, tipo) not in self._registrados:
+            self._registrados.append((widget, tipo))
         self._pintar_widget(widget, tipo)
+
+    def atualizar_widget(self, widget, tipo="padrao"):
+        """Atualiza a aparência de um widget registrado após mudar seu estado."""
+        if (widget, tipo) in self._registrados:
+            self._pintar_widget(widget, tipo)
 
     def ao_trocar(self, callback):
         self._callbacks.append(callback)
@@ -309,6 +317,8 @@ class ThemeManager:
         self.root.option_add("*Entry.Background", c["campo_bg"])
         self.root.option_add("*Entry.Foreground", c["campo_fg"])
         self.root.option_add("*Entry.insertBackground", c["campo_fg"])
+        self.root.option_add("*Entry.disabledBackground", c["campo_bg_desabilitado"])
+        self.root.option_add("*Entry.disabledForeground", c["campo_fg"])
 
         self.root.option_add("*Button.Background", c["botao_bg"])
         self.root.option_add("*Button.Foreground", c["botao_fg"])
@@ -330,13 +340,32 @@ class ThemeManager:
 
         try:
             if tipo == "campo":
-                widget.configure(
-                    bg=c["campo_bg"],
-                    fg=c["campo_fg"],
-                    insertbackground=c["campo_fg"],
-                    highlightbackground=c["borda"],
-                    highlightcolor=c["acento"],
-                )
+                classe = widget.winfo_class()
+                if classe == "Entry":
+                    widget.configure(
+                        bg=c["campo_bg"],
+                        fg=c["campo_fg"],
+                        insertbackground=c["campo_fg"],
+                        disabledbackground=c["campo_bg_desabilitado"],
+                        disabledforeground=c["campo_fg"],
+                        highlightbackground=c["borda"],
+                        highlightcolor=c["acento"],
+                    )
+                elif classe == "Text":
+                    estado = str(widget.cget("state"))
+                    cor_fundo = (
+                        c["campo_bg"]
+                        if estado == "normal"
+                        else c["campo_bg_desabilitado"]
+                    )
+                    widget.configure(
+                        bg=cor_fundo,
+                        fg=c["campo_fg"],
+                        insertbackground=c["campo_fg"],
+                        selectbackground=c["selecao_bg"],
+                        selectforeground=c["selecao_fg"],
+                        highlightbackground=c["borda"],
+                    )
 
             elif tipo == "texto":
                 widget.configure(
@@ -589,6 +618,9 @@ class ThemeManager:
                 )
 
             elif classe == "Entry":
+                self._pintar_widget(widget, "campo")
+
+            elif classe == "Text" and getattr(widget, "_autowms_campo", False):
                 self._pintar_widget(widget, "campo")
 
             elif classe in ("Text", "Listbox"):

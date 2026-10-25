@@ -954,6 +954,9 @@ class MainWindow:
         for w in widgets:
             if w and w not in lista:
                 lista.append(w)
+            if w and w.winfo_class() in ("Entry", "Text"):
+                w._autowms_campo = True
+                self.theme.registrar(w, tipo="campo")
 
     def _set_campos_state(self, auto: Dict[str, Any], enabled: bool) -> None:
         # Habilita/desabilita campos editáveis
@@ -961,6 +964,8 @@ class MainWindow:
         for w in auto.get("widgets_editaveis", []):
             try:
                 w.config(state=estado)
+                if getattr(w, "_autowms_campo", False):
+                    self.theme.atualizar_widget(w, tipo="campo")
             except Exception:
                 pass
 
