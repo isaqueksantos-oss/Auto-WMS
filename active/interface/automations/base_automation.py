@@ -245,6 +245,9 @@ def digitar_transacao(transacao):
     return True
 
 def cursor_carregando():
+    largura, altura = pyautogui.size()
+    pyautogui.moveTo(largura // 2, altura // 2)
+
     h_wait = ctypes.windll.user32.LoadCursorW(0, IDC_WAIT)
     h_appstarting = ctypes.windll.user32.LoadCursorW(0, IDC_APPSTARTING)
 
